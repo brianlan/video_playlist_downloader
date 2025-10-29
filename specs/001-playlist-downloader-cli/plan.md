@@ -61,6 +61,8 @@ src/
 tests/
 ├── cli/
 │   └── test_playlist_download.py
+├── reporting/
+│   └── test_subtitle_coverage.py
 ├── unit/
 │   ├── test_subtitles.py
 │   └── test_throttle_cli.py
@@ -76,6 +78,10 @@ tests/
 
 scripts/
 └── run_quality.sh
+
+reports/
+├── throttle-metrics.md
+└── subtitle-metrics.json
 ```
 
 **Structure Decision**: Single Python package keeps CLI orchestration and domain logic co-located for readability; tests mirror module layout to reinforce TDD workflow; automation scripts reside in `scripts/` to centralize reusable commands.

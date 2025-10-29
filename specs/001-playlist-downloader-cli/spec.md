@@ -34,7 +34,7 @@ As a content archivist I want to trigger a playlist download from a single CLI c
 
 **Why this priority**: Establishes the core value of the tool—extracting playlist items and downloading permitted videos on demand.
 
-**Independent Test**: Automated CLI workflow test authored first (`tests/cli/test_playlist_download.py`) using recorded playlist fixtures and stubbed network responses, executed locally via `make test-download` and in CI, verifies that a supplied playlist link schedules and downloads all eligible videos.
+**Independent Test**: Automated CLI workflow suite authored first (`tests/cli/test_playlist_download.py`, `tests/integration/test_cli_download.py`, `tests/cli/test_console_summary.py`) using recorded playlist fixtures and stubbed network responses, executed locally via `make test-download` and in CI, verifies that a supplied playlist link schedules downloads and presents accurate console summaries.
 
 **Acceptance Scenarios**:
 
@@ -64,7 +64,7 @@ As a catalog manager I want each downloaded video’s metadata (publish time, ti
 
 **Why this priority**: Enables downstream cataloging, duplicate detection, and compliance reporting.
 
-**Independent Test**: Automated metadata ingestion and latency suite (`tests/db/test_video_recording.py`, `tests/unit/test_subtitles.py`, `tests/perf/test_metadata_latency.py`) authored before implementation, executed through `make test-metadata` locally and in CI, asserts that metadata/subtitles persist correctly and each write finishes within 5 seconds.
+**Independent Test**: Automated metadata ingestion and latency suite (`tests/db/test_video_recording.py`, `tests/unit/test_subtitles.py`, `tests/perf/test_metadata_latency.py`, `tests/reporting/test_subtitle_coverage.py`) authored before implementation, executed through `make test-metadata` locally and in CI, asserts that metadata/subtitles persist correctly, coverage meets 90%, and each write finishes within 5 seconds.
 
 **Acceptance Scenarios**:
 

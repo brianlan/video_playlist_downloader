@@ -26,9 +26,9 @@ description: "Task list for Video Playlist CLI Downloader implementation"
 - [ ] T002 Scaffold package directories and placeholder modules in `src/video_playlist_downloader/`
 - [ ] T003 Add `Makefile` with `quality` target invoking conda activation and script in `Makefile`
 - [ ] T004 Create automation wrapper `scripts/run_quality.sh` to run `pytest` and `ruff check`
-- [ ] T005 Add `make test-download` target invoking `pytest tests/cli/test_playlist_download.py tests/integration/test_cli_download.py` in `Makefile`
+- [ ] T005 Add `make test-download` target invoking `pytest tests/cli/test_playlist_download.py tests/integration/test_cli_download.py tests/cli/test_console_summary.py` in `Makefile`
 - [ ] T006 Add `make test-resume` target invoking `pytest tests/persistence/test_resume_progress.py tests/cli/test_resume_command.py` in `Makefile`
-- [ ] T007 Add `make test-metadata` target invoking `pytest tests/db/test_video_recording.py tests/unit/test_subtitles.py tests/perf/test_metadata_latency.py` in `Makefile`
+- [ ] T007 Add `make test-metadata` target invoking `pytest tests/db/test_video_recording.py tests/unit/test_subtitles.py tests/perf/test_metadata_latency.py tests/reporting/test_subtitle_coverage.py` in `Makefile`
 - [ ] T008 Add `make test-throttle` target invoking `pytest tests/rate_limit/test_throttle_controls.py tests/unit/test_throttle_cli.py tests/rate_limit/test_throttle_metrics.py` in `Makefile`
 
 ---
@@ -53,7 +53,7 @@ description: "Task list for Video Playlist CLI Downloader implementation"
 
 **Goal**: Trigger playlist download from a single CLI command, capturing all permitted videos.
 
-**Independent Test**: `make test-download` executes `pytest tests/cli/test_playlist_download.py tests/integration/test_cli_download.py` using recorded fixtures and mocked yt-dlp calls.
+**Independent Test**: `make test-download` executes `pytest tests/cli/test_playlist_download.py tests/integration/test_cli_download.py tests/cli/test_console_summary.py` using recorded fixtures and mocked yt-dlp calls.
 
 ### Tests for User Story 1 (author first) ⚠️
 
@@ -61,14 +61,15 @@ description: "Task list for Video Playlist CLI Downloader implementation"
 
 - [ ] T014 [P] [US1] Author CLI workflow test covering download and skip logging in `tests/cli/test_playlist_download.py`
 - [ ] T015 [P] [US1] Author integration test for playlist run with fixture storage in `tests/integration/test_cli_download.py`
+- [ ] T016 [P] [US1] Author console summary snapshot test to verify Rich output in `tests/cli/test_console_summary.py`
 
 ### Implementation for User Story 1
 
-- [ ] T016 [P] [US1] Implement playlist enumeration and download orchestration in `src/video_playlist_downloader/downloader.py`
-- [ ] T017 [US1] Wire `download` command with configuration and downloader in `src/video_playlist_downloader/cli.py`
-- [ ] T018 [US1] Persist session activity and skip reasons to database log in `src/video_playlist_downloader/persistence.py`
-- [ ] T019 [US1] Align CLI contract with OpenAPI expectations in `tests/contract/test_contract_alignment.py`
-- [ ] T020 [US1] Emit Rich progress and summary output for downloads in `src/video_playlist_downloader/cli.py`
+- [ ] T017 [P] [US1] Implement playlist enumeration and download orchestration in `src/video_playlist_downloader/downloader.py`
+- [ ] T018 [US1] Wire `download` command with configuration and downloader in `src/video_playlist_downloader/cli.py`
+- [ ] T019 [US1] Persist session activity and skip reasons to database log in `src/video_playlist_downloader/persistence.py`
+- [ ] T020 [US1] Align CLI contract with OpenAPI expectations in `tests/contract/test_contract_alignment.py`
+- [ ] T021 [US1] Emit Rich progress and summary output for downloads in `src/video_playlist_downloader/cli.py`
 
 **Checkpoint**: Playlist downloads execute end-to-end with skipped videos logged, progress visible, and contract validated.
 
@@ -84,15 +85,15 @@ description: "Task list for Video Playlist CLI Downloader implementation"
 
 > **MANDATE: Write these tests FIRST, ensure they FAIL before implementation, and document the command that executes them.**
 
-- [ ] T021 [P] [US2] Author persistence checkpoint test for resume flow in `tests/persistence/test_resume_progress.py`
-- [ ] T022 [P] [US2] Author CLI resume command test validating restart behavior in `tests/cli/test_resume_command.py`
+- [ ] T022 [P] [US2] Author persistence checkpoint test for resume flow in `tests/persistence/test_resume_progress.py`
+- [ ] T023 [P] [US2] Author CLI resume command test validating restart behavior in `tests/cli/test_resume_command.py`
 
 ### Implementation for User Story 2
 
-- [ ] T023 [US2] Extend session persistence with checkpoint snapshots and hashes in `src/video_playlist_downloader/persistence.py`
-- [ ] T024 [US2] Update downloader to rebuild queues from checkpoints in `src/video_playlist_downloader/downloader.py`
-- [ ] T025 [US2] Implement `resume` CLI command wiring session lookup in `src/video_playlist_downloader/cli.py`
-- [ ] T026 [US2] Add session status reporting command in `src/video_playlist_downloader/cli.py`
+- [ ] T024 [US2] Extend session persistence with checkpoint snapshots and hashes in `src/video_playlist_downloader/persistence.py`
+- [ ] T025 [US2] Update downloader to rebuild queues from checkpoints in `src/video_playlist_downloader/downloader.py`
+- [ ] T026 [US2] Implement `resume` CLI command wiring session lookup in `src/video_playlist_downloader/cli.py`
+- [ ] T027 [US2] Add session status reporting command in `src/video_playlist_downloader/cli.py`
 
 **Checkpoint**: Interrupted downloads resume seamlessly with accurate status reporting.
 
@@ -102,25 +103,27 @@ description: "Task list for Video Playlist CLI Downloader implementation"
 
 **Goal**: Record video metadata and optional subtitles in the database for cataloging.
 
-**Independent Test**: `make test-metadata` runs `pytest tests/db/test_video_recording.py tests/unit/test_subtitles.py tests/perf/test_metadata_latency.py` verifying storage correctness and persistence latency.
+**Independent Test**: `make test-metadata` runs `pytest tests/db/test_video_recording.py tests/unit/test_subtitles.py tests/perf/test_metadata_latency.py tests/reporting/test_subtitle_coverage.py` verifying storage correctness, coverage, and latency.
 
 ### Tests for User Story 3 (author first) ⚠️
 
 > **MANDATE: Write these tests FIRST, ensure they FAIL before implementation, and document the command that executes them.**
 
-- [ ] T027 [P] [US3] Author metadata persistence test validating schema writes in `tests/db/test_video_recording.py`
-- [ ] T028 [P] [US3] Author subtitle harvesting test with language fallbacks in `tests/unit/test_subtitles.py`
-- [ ] T029 [P] [US3] Author metadata latency performance test asserting ≤5s inserts in `tests/perf/test_metadata_latency.py`
+- [ ] T028 [P] [US3] Author metadata persistence test validating schema writes in `tests/db/test_video_recording.py`
+- [ ] T029 [P] [US3] Author subtitle harvesting test with language fallbacks in `tests/unit/test_subtitles.py`
+- [ ] T030 [P] [US3] Author metadata latency performance test asserting ≤5s inserts in `tests/perf/test_metadata_latency.py`
+- [ ] T031 [P] [US3] Author subtitle coverage analytics test enforcing 90% threshold in `tests/reporting/test_subtitle_coverage.py`
 
 ### Implementation for User Story 3
 
-- [ ] T030 [US3] Define SQLAlchemy models for Playlist, VideoRecord, SubtitleAsset in `src/video_playlist_downloader/metadata.py`
-- [ ] T031 [US3] Implement metadata write helpers and subtitle associations in `src/video_playlist_downloader/persistence.py`
-- [ ] T032 [US3] Implement subtitle extraction helper integrating yt-dlp metadata in `src/video_playlist_downloader/subtitles.py`
-- [ ] T033 [US3] Update downloader pipeline to persist metadata and optional subtitles in `src/video_playlist_downloader/downloader.py`
-- [ ] T034 [US3] Surface metadata summaries in CLI status output in `src/video_playlist_downloader/cli.py`
+- [ ] T032 [US3] Define SQLAlchemy models for Playlist, VideoRecord, SubtitleAsset in `src/video_playlist_downloader/metadata.py`
+- [ ] T033 [US3] Implement metadata write helpers and subtitle associations in `src/video_playlist_downloader/persistence.py`
+- [ ] T034 [US3] Implement subtitle extraction helper integrating yt-dlp metadata in `src/video_playlist_downloader/subtitles.py`
+- [ ] T035 [US3] Update downloader pipeline to persist metadata and optional subtitles in `src/video_playlist_downloader/downloader.py`
+- [ ] T036 [US3] Surface metadata summaries in CLI status output in `src/video_playlist_downloader/cli.py`
+- [ ] T037 [US3] Generate subtitle coverage report and store metrics in `reports/subtitle-metrics.json`
 
-**Checkpoint**: Metadata and subtitles stored for all downloads with CLI visibility and latency guarantees met.
+**Checkpoint**: Metadata and subtitles stored for all downloads with CLI visibility, coverage metrics, and latency guarantees met.
 
 ---
 
@@ -134,17 +137,17 @@ description: "Task list for Video Playlist CLI Downloader implementation"
 
 > **MANDATE: Write these tests FIRST, ensure they FAIL before implementation, and document the command that executes them.**
 
-- [ ] T035 [P] [US4] Author throttle policy test covering semaphore and delay logic in `tests/rate_limit/test_throttle_controls.py`
-- [ ] T036 [P] [US4] Author CLI configuration test for throttle flags in `tests/unit/test_throttle_cli.py`
-- [ ] T037 [P] [US4] Author throttle metrics analysis test ensuring ≥95% compliant runs in `tests/rate_limit/test_throttle_metrics.py`
+- [ ] T038 [P] [US4] Author throttle policy test covering semaphore and delay logic in `tests/rate_limit/test_throttle_controls.py`
+- [ ] T039 [P] [US4] Author CLI configuration test for throttle flags in `tests/unit/test_throttle_cli.py`
+- [ ] T040 [P] [US4] Author throttle metrics analysis test ensuring ≥95% compliant runs in `tests/rate_limit/test_throttle_metrics.py`
 
 ### Implementation for User Story 4
 
-- [ ] T038 [US4] Implement throttle policy manager with concurrency semaphore in `src/video_playlist_downloader/throttle.py`
-- [ ] T039 [US4] Integrate throttle controls into downloader execution loop in `src/video_playlist_downloader/downloader.py`
-- [ ] T040 [US4] Extend configuration schema with throttle settings and validation in `src/video_playlist_downloader/config.py`
-- [ ] T041 [US4] Log throttle outcomes and display metrics in session reporting in `src/video_playlist_downloader/cli.py`
-- [ ] T042 [US4] Persist throttle compliance summary to `reports/throttle-metrics.md` and raise alerts on failures
+- [ ] T041 [US4] Implement throttle policy manager with concurrency semaphore in `src/video_playlist_downloader/throttle.py`
+- [ ] T042 [US4] Integrate throttle controls into downloader execution loop in `src/video_playlist_downloader/downloader.py`
+- [ ] T043 [US4] Extend configuration schema with throttle settings and validation in `src/video_playlist_downloader/config.py`
+- [ ] T044 [US4] Log throttle outcomes and display metrics in session reporting in `src/video_playlist_downloader/cli.py`
+- [ ] T045 [US4] Persist throttle compliance summary to `reports/throttle-metrics.md` and raise alerts on failures
 
 **Checkpoint**: Download rate adheres to configured ceilings with clear operator feedback and compliance tracking.
 
@@ -154,11 +157,11 @@ description: "Task list for Video Playlist CLI Downloader implementation"
 
 **Purpose**: Repository hygiene, documentation, and release readiness
 
-- [ ] T043 [P] Capture throttling and persistence decisions in `docs/decisions/2025-10-29-download-architecture.md`
-- [ ] T044 Refresh quickstart with resume and throttle examples in `specs/001-playlist-downloader-cli/quickstart.md`
-- [ ] T045 [P] Export quality gate results to `reports/quality-summary.md` after `make quality`
-- [ ] T046 Harden logging configuration and redact sensitive data in `src/video_playlist_downloader/cli.py`
-- [ ] T047 [P] Final review and update of OpenAPI alignment notes in `contracts/openapi.yaml`
+- [ ] T046 [P] Capture throttling and persistence decisions in `docs/decisions/2025-10-29-download-architecture.md`
+- [ ] T047 Refresh quickstart with resume and throttle examples in `specs/001-playlist-downloader-cli/quickstart.md`
+- [ ] T048 [P] Export quality gate results to `reports/quality-summary.md` after `make quality`
+- [ ] T049 Harden logging configuration and redact sensitive data in `src/video_playlist_downloader/cli.py`
+- [ ] T050 [P] Final review and update of OpenAPI alignment notes in `contracts/openapi.yaml`
 
 ---
 
@@ -189,7 +192,7 @@ description: "Task list for Video Playlist CLI Downloader implementation"
 
 - Setup tasks T002–T008 can run in parallel after T001.
 - Foundational tasks T009–T012 can execute concurrently; T013 follows configuration decisions from T009.
-- For US1, T014 and T015 run in parallel; after tests, T016 and T019 can proceed concurrently while T017 waits on T016.
+- For US1, T014–T016 run in parallel; after tests, T017 and T020 can proceed concurrently while T018 waits on T017.
 - For US2–US4, marked `[P]` tasks (tests and helper modules) can execute concurrently once prerequisite modules exist.
 
 ---
@@ -198,12 +201,12 @@ description: "Task list for Video Playlist CLI Downloader implementation"
 
 ```bash
 # Parallel test authoring once foundational fixtures exist:
-pytest tests/persistence/test_resume_progress.py  # T021
-pytest tests/cli/test_resume_command.py          # T022
+pytest tests/persistence/test_resume_progress.py  # T022
+pytest tests/cli/test_resume_command.py          # T023
 
 # After tests fail, implement supporting modules concurrently:
-code src/video_playlist_downloader/persistence.py  # T023
-code src/video_playlist_downloader/downloader.py   # T024
+code src/video_playlist_downloader/persistence.py  # T024
+code src/video_playlist_downloader/downloader.py   # T025
 ```
 
 ---
