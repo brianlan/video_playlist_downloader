@@ -9,7 +9,11 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except ModuleNotFoundError:  # pragma: no cover - optional dependency fallback
+    def load_dotenv(*args, **kwargs):  # type: ignore[override]
+        return False
 
 DEFAULT_STORAGE_DIR = Path("video-storage")
 DEFAULT_REPORTS_DIR = Path("reports")

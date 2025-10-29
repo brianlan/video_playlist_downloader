@@ -61,11 +61,11 @@ description: "Task list for Video Playlist CLI Downloader implementation"
 
 > **MANDATE: Write these tests FIRST, ensure they FAIL before implementation, and document the command that executes them.**
 
-- [ ] T014 [P] [US1] Author CLI workflow test covering download and skip logging in `tests/cli/test_playlist_download.py`
-- [ ] T015 [P] [US1] Author integration test for playlist run with fixture storage in `tests/integration/test_cli_download.py`
-- [ ] T016 [P] [US1] Author console summary snapshot test to verify Rich output includes totals, pending count, throttle state, elapsed time, and ETA table in `tests/cli/test_console_summary.py`
-- [ ] T057 [P] [US1] Author status latency benchmark for 500-item playlists in `tests/perf/test_status_latency.py`
-- [ ] T058 [P] [US1] Author low disk capacity failure test in `tests/integration/test_low_disk_abort.py`
+- [X] T014 [P] [US1] Author CLI workflow test covering download and skip logging in `tests/cli/test_playlist_download.py`
+- [X] T015 [P] [US1] Author integration test for playlist run with fixture storage in `tests/integration/test_cli_download.py`
+- [X] T016 [P] [US1] Author console summary snapshot test to verify Rich output includes totals, pending count, throttle state, elapsed time, and ETA table in `tests/cli/test_console_summary.py`
+- [X] T057 [P] [US1] Author status latency benchmark for 500-item playlists in `tests/perf/test_status_latency.py`
+- [X] T058 [P] [US1] Author low disk capacity failure test in `tests/integration/test_low_disk_abort.py`
 
 ### Implementation for User Story 1
 
