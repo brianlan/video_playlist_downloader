@@ -1,0 +1,37 @@
+.codex/auth.json
+.codex/log/
+.codex/sessions/
+.codex/version.json
+.codex/history.jsonl
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.so
+.Python
+env/
+.env/
+.venv/
+venv/
+pip-wheel-metadata/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+
+# Logs and local config
+*.log
+.coverage
+.coverage.*
+coverage/
+.DS_Store
+Thumbs.db
+.env
+.env.*
+
+# IDE/editor
+.vscode/
+.idea/
