@@ -64,7 +64,7 @@ As a catalog manager I want each downloaded video’s metadata (publish time, ti
 
 **Why this priority**: Enables downstream cataloging, duplicate detection, and compliance reporting.
 
-**Independent Test**: Automated metadata ingestion test (`tests/db/test_video_recording.py`) authored before implementation, using database fixtures and subtitle mocks, executed through `make test-metadata` locally and in CI, asserts that metadata and optional subtitles are persisted per video.
+**Independent Test**: Automated metadata ingestion and latency suite (`tests/db/test_video_recording.py`, `tests/unit/test_subtitles.py`, `tests/perf/test_metadata_latency.py`) authored before implementation, executed through `make test-metadata` locally and in CI, asserts that metadata/subtitles persist correctly and each write finishes within 5 seconds.
 
 **Acceptance Scenarios**:
 
@@ -79,7 +79,7 @@ As a site reliability engineer I want to cap download concurrency and speed so t
 
 **Why this priority**: Compliance with platform limits avoids service disruption.
 
-**Independent Test**: Automated throttle policy test (`tests/rate_limit/test_throttle_controls.py`) written first with mocked timing controls, executed via `make test-throttle` locally and in CI, verifies that configured limits are honored across the download lifecycle.
+**Independent Test**: Automated throttle compliance suite (`tests/rate_limit/test_throttle_controls.py`, `tests/unit/test_throttle_cli.py`, `tests/rate_limit/test_throttle_metrics.py`) written first with mocked timing controls, executed via `make test-throttle` locally and in CI, verifies rate limits are honored and 95% of runs avoid IP bans.
 
 **Acceptance Scenarios**:
 

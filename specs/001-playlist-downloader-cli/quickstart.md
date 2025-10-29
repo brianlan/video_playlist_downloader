@@ -3,7 +3,7 @@
 ## Prerequisites
 - Access to the shared conda environment `/ssd4/envs/llm_py310_torch271_cu128`
 - Network connectivity to Bilibili for initial playlist discovery (downloads can continue offline once cached)
-- Write permissions to `video-storage/` and `video_storage/state.db`
+- Write permissions to `video-storage/` and `video-storage/state.db`
 
 ## 1. Activate environment
 ```bash

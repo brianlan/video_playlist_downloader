@@ -11,7 +11,7 @@ Deliver a Python-based CLI that ingests a playlist URL, enumerates every accessi
 
 **Language/Version**: Python 3.10 (conda environment `/ssd4/envs/llm_py310_torch271_cu128`)  
 **Primary Dependencies**: yt-dlp, Typer (CLI scaffolding), SQLAlchemy, SQLite, Tenacity (retry control), Rich (console reporting)  
-**Storage**: SQLite file (`video_storage/state.db`) accessed via SQLAlchemy ORM  
+**Storage**: SQLite file (`video-storage/state.db`) accessed via SQLAlchemy ORM  
 **Testing**: pytest with pytest-mock for dependency isolation, coverage.py for test completeness  
 **Target Platform**: Linux CLI environments managed through the shared conda environment  
 **Project Type**: Single-project CLI with supporting libraries under `src/video_playlist_downloader`  
@@ -59,13 +59,18 @@ src/
 │   └── subtitles.py
 
 tests/
+├── cli/
+│   └── test_playlist_download.py
 ├── unit/
-│   ├── test_downloader.py
-│   ├── test_persistence.py
-│   ├── test_throttle.py
-│   └── test_metadata.py
+│   ├── test_subtitles.py
+│   └── test_throttle_cli.py
 ├── integration/
 │   └── test_cli_download.py
+├── rate_limit/
+│   ├── test_throttle_controls.py
+│   └── test_throttle_metrics.py
+├── perf/
+│   └── test_metadata_latency.py
 └── contract/
     └── test_contract_alignment.py
 
