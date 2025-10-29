@@ -106,9 +106,10 @@ As a site reliability engineer I want to cap download concurrency and speed so t
 - **FR-005**: The system MUST persist video metadata (title, description, publish time, duration, URL, file path) and session details in a project database.
 - **FR-006**: Download progress MUST be checkpointed such that interrupted runs can resume without re-downloading completed items, and reruns MUST verify existing files and metadata before skipping already downloaded videos.
 - **FR-007**: Available subtitles MUST be downloaded alongside the video and linked to the corresponding database record; absence MUST be noted without failing the job.
-- **FR-008**: Operators MUST receive clear console output and session summaries covering totals downloaded, skipped, remaining time, and throttle status.
+- **FR-008**: Operators MUST receive Rich-rendered console output summarizing totals downloaded, skipped, pending, elapsed time, throttle status, and estimated remaining duration in a structured table.
 - **FR-009**: The solution MUST provide a single documented command that prepares the conda environment (`conda activate /ssd4/envs/llm_py310_torch271_cu128`) and runs the full automated test gate.
 - **FR-010**: Configuration (storage path, throttle values, database connection, subtitle preference) MUST be adjustable via CLI flags and/or config file without code changes.
+- **FR-011**: After playlist discovery metadata is cached, the downloader MUST continue processing queued items during transient network outages by using the cached manifest and persisting results for later sync once connectivity returns.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -127,7 +128,7 @@ As a site reliability engineer I want to cap download concurrency and speed so t
 
 ### Measurable Outcomes
 
-- **SC-001**: Operators complete a full download of a 100-video playlist without manual retries and with zero IP bans in 95% of runs.
+- **SC-001**: Operators complete a full download of a 100-video playlist without manual retries and, in throttling simulations that inject provider 429/ban responses, the system avoids IP bans in at least 95% of runs by backing off automatically.
 - **SC-002**: Resume functionality restores interrupted sessions and avoids re-downloading completed videos in 99% of tested interruptions.
 - **SC-003**: Metadata for 100% of downloaded videos is present in the database within 5 seconds of each file completion.
 - **SC-004**: Optional subtitle assets are captured for at least 90% of videos where the source provides subtitles, with accurate linkage in the database.

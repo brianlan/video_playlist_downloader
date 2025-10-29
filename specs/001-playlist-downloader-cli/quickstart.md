@@ -44,7 +44,17 @@ video-playlist-downloader resume --session-id <uuid-from-status>
 make quality
 ```
 
-## 8. Export session report
+## 8. Run targeted test suites
+```bash
+make test-download   # CLI workflow, integration, console summary
+make test-resume     # Resume persistence + CLI commands
+make test-metadata   # Metadata, subtitle coverage, latency
+make test-throttle   # Throttle policy, CLI flags, compliance metrics
+```
+
+## 9. Export session report and metrics
 ```bash
 video-playlist-downloader report --session-id <uuid> --format json > session-report.json
+cat reports/throttle-metrics.md
+cat reports/subtitle-metrics.json
 ```

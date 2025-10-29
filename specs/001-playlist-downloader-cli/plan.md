@@ -15,8 +15,9 @@ Deliver a Python-based CLI that ingests a playlist URL, enumerates every accessi
 **Testing**: pytest with pytest-mock for dependency isolation, coverage.py for test completeness  
 **Target Platform**: Linux CLI environments managed through the shared conda environment  
 **Project Type**: Single-project CLI with supporting libraries under `src/video_playlist_downloader`  
-**Performance Goals**: Sustain sequential downloads at throttled 2–3 concurrent tasks; maintain <5% re-download rate on resumes; CLI commands complete status reporting in under 2 seconds for 500-item playlists  
+**Performance Goals**: Sustain sequential downloads at throttled 2–3 concurrent tasks; maintain ≤1% re-download rate on resumes (≥99% completed items skipped); CLI commands complete status reporting in under 2 seconds for 500-item playlists  
 **Constraints**: Must enforce configurable rate limits to prevent IP bans; operations must be runnable offline after playlist metadata capture; all automation executed via documented conda activation command  
+**Operational Strategy**: Cache playlist manifests and download queues locally so transient network loss can be bridged without stalling the pipeline, and drive throttle verification with simulated provider 429/ban responses captured in dedicated rate-limit test fixtures.  
 **Scale/Scope**: Designed for playlists containing up to 500 entries (≈200 GB total media); supports growth to tens of thousands of metadata records without schema changes
 
 ## Constitution Check

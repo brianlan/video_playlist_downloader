@@ -61,7 +61,7 @@ description: "Task list for Video Playlist CLI Downloader implementation"
 
 - [ ] T014 [P] [US1] Author CLI workflow test covering download and skip logging in `tests/cli/test_playlist_download.py`
 - [ ] T015 [P] [US1] Author integration test for playlist run with fixture storage in `tests/integration/test_cli_download.py`
-- [ ] T016 [P] [US1] Author console summary snapshot test to verify Rich output in `tests/cli/test_console_summary.py`
+- [ ] T016 [P] [US1] Author console summary snapshot test to verify Rich output includes totals, pending count, throttle state, elapsed time, and ETA table in `tests/cli/test_console_summary.py`
 
 ### Implementation for User Story 1
 
@@ -69,7 +69,7 @@ description: "Task list for Video Playlist CLI Downloader implementation"
 - [ ] T018 [US1] Wire `download` command with configuration and downloader in `src/video_playlist_downloader/cli.py`
 - [ ] T019 [US1] Persist session activity and skip reasons to database log in `src/video_playlist_downloader/persistence.py`
 - [ ] T020 [US1] Align CLI contract with OpenAPI expectations in `tests/contract/test_contract_alignment.py`
-- [ ] T021 [US1] Emit Rich progress and summary output for downloads in `src/video_playlist_downloader/cli.py`
+- [ ] T021 [US1] Emit Rich progress and summary table covering totals, pending items, elapsed time, throttle status, and ETA in `src/video_playlist_downloader/cli.py`
 
 **Checkpoint**: Playlist downloads execute end-to-end with skipped videos logged, progress visible, and contract validated.
 
@@ -87,6 +87,7 @@ description: "Task list for Video Playlist CLI Downloader implementation"
 
 - [ ] T022 [P] [US2] Author persistence checkpoint test for resume flow in `tests/persistence/test_resume_progress.py`
 - [ ] T023 [P] [US2] Author CLI resume command test validating restart behavior in `tests/cli/test_resume_command.py`
+- [ ] T051 [P] [US2] Author offline continuity test verifying cached manifest supports downloads without network in `tests/integration/test_offline_resume.py`
 
 ### Implementation for User Story 2
 
@@ -94,6 +95,8 @@ description: "Task list for Video Playlist CLI Downloader implementation"
 - [ ] T025 [US2] Update downloader to rebuild queues from checkpoints in `src/video_playlist_downloader/downloader.py`
 - [ ] T026 [US2] Implement `resume` CLI command wiring session lookup in `src/video_playlist_downloader/cli.py`
 - [ ] T027 [US2] Add session status reporting command in `src/video_playlist_downloader/cli.py`
+- [ ] T052 [US2] Persist and load cached playlist manifests for offline operation in `src/video_playlist_downloader/persistence.py`
+- [ ] T053 [US2] Consume manifest cache and continue downloads when network calls fail in `src/video_playlist_downloader/downloader.py`
 
 **Checkpoint**: Interrupted downloads resume seamlessly with accurate status reporting.
 
@@ -120,7 +123,7 @@ description: "Task list for Video Playlist CLI Downloader implementation"
 - [ ] T033 [US3] Implement metadata write helpers and subtitle associations in `src/video_playlist_downloader/persistence.py`
 - [ ] T034 [US3] Implement subtitle extraction helper integrating yt-dlp metadata in `src/video_playlist_downloader/subtitles.py`
 - [ ] T035 [US3] Update downloader pipeline to persist metadata and optional subtitles in `src/video_playlist_downloader/downloader.py`
-- [ ] T036 [US3] Surface metadata summaries in CLI status output in `src/video_playlist_downloader/cli.py`
+- [ ] T036 [US3] Surface metadata summaries alongside the Rich totals/throttle table in `src/video_playlist_downloader/cli.py`
 - [ ] T037 [US3] Generate subtitle coverage report and store metrics in `reports/subtitle-metrics.json`
 
 **Checkpoint**: Metadata and subtitles stored for all downloads with CLI visibility, coverage metrics, and latency guarantees met.
@@ -140,14 +143,17 @@ description: "Task list for Video Playlist CLI Downloader implementation"
 - [ ] T038 [P] [US4] Author throttle policy test covering semaphore and delay logic in `tests/rate_limit/test_throttle_controls.py`
 - [ ] T039 [P] [US4] Author CLI configuration test for throttle flags in `tests/unit/test_throttle_cli.py`
 - [ ] T040 [P] [US4] Author throttle metrics analysis test ensuring ≥95% compliant runs in `tests/rate_limit/test_throttle_metrics.py`
+- [ ] T054 [P] [US4] Author ban-avoidance simulation test injecting provider 429/ban responses in `tests/rate_limit/test_ban_resilience.py`
 
 ### Implementation for User Story 4
 
 - [ ] T041 [US4] Implement throttle policy manager with concurrency semaphore in `src/video_playlist_downloader/throttle.py`
 - [ ] T042 [US4] Integrate throttle controls into downloader execution loop in `src/video_playlist_downloader/downloader.py`
 - [ ] T043 [US4] Extend configuration schema with throttle settings and validation in `src/video_playlist_downloader/config.py`
-- [ ] T044 [US4] Log throttle outcomes and display metrics in session reporting in `src/video_playlist_downloader/cli.py`
+- [ ] T044 [US4] Log throttle outcomes, ban-resilience metrics, and display them in the Rich session reporting table in `src/video_playlist_downloader/cli.py`
 - [ ] T045 [US4] Persist throttle compliance summary to `reports/throttle-metrics.md` and raise alerts on failures
+- [ ] T055 [US4] React to simulated ban signals with exponential backoff and recovery in `src/video_playlist_downloader/throttle.py`
+- [ ] T056 [US4] Capture ban-resilience metrics in reporting artifacts (`reports/throttle-metrics.md`) and CLI summaries
 
 **Checkpoint**: Download rate adheres to configured ceilings with clear operator feedback and compliance tracking.
 
