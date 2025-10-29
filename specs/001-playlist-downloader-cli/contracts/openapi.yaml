@@ -1,0 +1,149 @@
+openapi: 3.1.0
+info:
+  title: Video Playlist Downloader CLI Contract
+  version: 0.1.0
+  description: >
+    Logical contract that mirrors the CLI operations for downloading and tracking
+    playlist jobs. Each operation corresponds to a CLI command exposed to users.
+servers:
+  - url: cli://video-playlist-downloader
+    description: Local CLI invocation
+tags:
+  - name: Playlists
+  - name: Sessions
+paths:
+  /playlists/download:
+    post:
+      tags: [Playlists]
+      summary: Start downloading a playlist
+      operationId: startPlaylistDownload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - playlistUrl
+              properties:
+                playlistUrl:
+                  type: string
+                  format: uri
+                maxConcurrency:
+                  type: integer
+                  minimum: 1
+                  default: 2
+                limitRate:
+                  type: string
+                  description: Human-readable rate limit (e.g., 2M, 500K)
+                subtitleLanguages:
+                  type: array
+                  items:
+                    type: string
+                resumeSessionId:
+                  type: string
+                  format: uuid
+      responses:
+        '202':
+          description: Download session started
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - sessionId
+                  - playlistId
+                properties:
+                  sessionId:
+                    type: string
+                    format: uuid
+                  playlistId:
+                    type: string
+                    format: uuid
+                  enqueued:
+                    type: integer
+  /playlists/{playlistId}/status:
+    get:
+      tags: [Playlists]
+      summary: Retrieve the latest playlist download metrics
+      operationId: getPlaylistStatus
+      parameters:
+        - name: playlistId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Playlist status snapshot
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - playlistId
+                  - sessions
+                properties:
+                  playlistId:
+                    type: string
+                    format: uuid
+                  sessions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SessionSummary'
+  /sessions/{sessionId}/resume:
+    post:
+      tags: [Sessions]
+      summary: Resume an interrupted download session
+      operationId: resumeSession
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Session resumed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionSummary'
+components:
+  schemas:
+    SessionSummary:
+      type: object
+      required:
+        - sessionId
+        - status
+        - videosTotal
+        - videosCompleted
+        - videosSkipped
+        - videosFailed
+        - throttleProfile
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, running, paused, completed]
+        videosTotal:
+          type: integer
+        videosCompleted:
+          type: integer
+        videosSkipped:
+          type: integer
+        videosFailed:
+          type: integer
+        throttleProfile:
+          type: object
+          properties:
+            maxConcurrency:
+              type: integer
+            limitRate:
+              type: string
+            sleepIntervalSeconds:
+              type: integer

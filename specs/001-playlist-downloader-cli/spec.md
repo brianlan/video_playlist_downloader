@@ -5,6 +5,12 @@
 **Status**: Draft  
 **Input**: User description: "Create a cli tool that takes as input a playlist web link, and download the videos using yt-dlp. We may need to develop a way to iterate through each page of the playlist to get the individual video url, so this may require a investigation on the web page analysis beforehand. Manage and control the download speed to prevent the video site banning our IP. For some video due to limited permission (e.g. 充电计划), we can skip downloading it. All the downloaded video should be saved into a video-storage directory. We also need to have a database to store each video's information, like the video publish time and title, etc. The downloading process may take quite a long time, so we also need to develop a mechanism to track the progress so we can resume in the middle. If we can get the subtitle along with the video downloading we also download and store this information to the DB. But if no subtitle for a video, we just skip this part and download the video only. We can take this playlist (https://space.bilibili.com/28554995/upload/video) as an example to develop our tool. IMPORTANT: Use conda environment during the development (conda activate /ssd4/envs/llm_py310_torch271_cu128) Use codex as AI agent which relies on AGENTS.md instead of CLAUDE.md."
 
+## Clarifications
+
+### Session 2025-10-29
+
+- Q: How should the tool handle videos that already exist in storage when rerunning on the same playlist? → A: Skip existing videos after verifying files and metadata
+
 ## User Scenarios & Testing *(mandatory)*
 
 <!--
@@ -98,7 +104,7 @@ As a site reliability engineer I want to cap download concurrency and speed so t
 - **FR-003**: Restricted or unavailable videos MUST be skipped gracefully with reason codes recorded in the session log.
 - **FR-004**: A configurable throttling policy MUST cap concurrent downloads and transfer rates to stay within provider tolerances.
 - **FR-005**: The system MUST persist video metadata (title, description, publish time, duration, URL, file path) and session details in a project database.
-- **FR-006**: Download progress MUST be checkpointed such that interrupted runs can resume without re-downloading completed items.
+- **FR-006**: Download progress MUST be checkpointed such that interrupted runs can resume without re-downloading completed items, and reruns MUST verify existing files and metadata before skipping already downloaded videos.
 - **FR-007**: Available subtitles MUST be downloaded alongside the video and linked to the corresponding database record; absence MUST be noted without failing the job.
 - **FR-008**: Operators MUST receive clear console output and session summaries covering totals downloaded, skipped, remaining time, and throttle status.
 - **FR-009**: The solution MUST provide a single documented command that prepares the conda environment (`conda activate /ssd4/envs/llm_py310_torch271_cu128`) and runs the full automated test gate.
