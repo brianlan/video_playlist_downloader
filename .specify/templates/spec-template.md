@@ -26,7 +26,7 @@
 
 **Why this priority**: [Explain the value and why it has this priority level]
 
-**Independent Test**: [Describe how this can be tested independently - e.g., "Can be fully tested by [specific action] and delivers [specific value]"]
+**Independent Test**: [Name the automated test that will be written first (unit/integration/contract) and the value it proves]
 
 **Acceptance Scenarios**:
 
@@ -41,7 +41,7 @@
 
 **Why this priority**: [Explain the value and why it has this priority level]
 
-**Independent Test**: [Describe how this can be tested independently]
+**Independent Test**: [Name the automated test that will be written first and the verification it provides]
 
 **Acceptance Scenarios**:
 
@@ -55,7 +55,7 @@
 
 **Why this priority**: [Explain the value and why it has this priority level]
 
-**Independent Test**: [Describe how this can be tested independently]
+**Independent Test**: [Name the automated test that will be written first and the verification it provides]
 
 **Acceptance Scenarios**:
 
@@ -72,8 +72,8 @@
   Fill them out with the right edge cases.
 -->
 
-- What happens when [boundary condition]?
-- How does system handle [error scenario]?
+- What happens when [boundary condition]? (Add the corresponding automated test case)
+- How does system handle [error scenario]? (Add the corresponding automated test case)
 
 ## Requirements *(mandatory)*
 

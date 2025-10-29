@@ -31,7 +31,11 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- **Clarity Over Cleverness**: Document how the plan keeps implementations explicit, simple, and discoverable.
+- **TDD Leads Delivery**: List the failing tests that will be authored before coding each scope item.
+- **Automation Everywhere**: Confirm local + CI automation commands that enforce linting, formatting, and tests.
+- **Lean Design Discipline**: Justify abstractions against KISS, DRY, SOLID, and YAGNI; flag refactors that keep things lean.
+- **Explain the Why**: Capture rationale for non-obvious decisions so reviewers understand the intent behind each step.
 
 ## Project Structure
 
