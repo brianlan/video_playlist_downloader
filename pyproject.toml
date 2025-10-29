@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=69.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "video-playlist-downloader"
+version = "0.1.0"
+description = "CLI tool for downloading and cataloging Bilibili playlist videos with resumable progress."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+  {name = "Video Playlist Downloader Team"}
+]
+dependencies = [
+  "typer>=0.12,<0.13",
+  "rich>=13.0,<14.0",
+  "yt-dlp>=2024.4.9",
+  "sqlalchemy>=2.0,<3.0",
+  "tenacity>=9.0,<10.0",
+  "python-dotenv>=1.0,<2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.4,<8.0",
+  "pytest-mock>=3.12,<4.0",
+  "coverage[toml]>=7.5,<8.0",
+  "ruff>=0.6.0,<0.7.0",
+]
+
+[project.urls]
+Homepage = "https://example.com/video-playlist-downloader"
+
+[project.scripts]
+video-playlist-downloader = "video_playlist_downloader.cli:app"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+addopts = "--strict-markers --disable-warnings"
+pythonpath = [
+  "src"
+]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100

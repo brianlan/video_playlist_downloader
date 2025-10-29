@@ -22,14 +22,14 @@ description: "Task list for Video Playlist CLI Downloader implementation"
 
 **Purpose**: Project initialization, tooling, and shared environment
 
-- [ ] T001 Create project manifest with CLI entry point and dependencies in `pyproject.toml`
-- [ ] T002 Scaffold package directories and placeholder modules in `src/video_playlist_downloader/`
-- [ ] T003 Add `Makefile` with `quality` target invoking conda activation and script in `Makefile`
-- [ ] T004 Create automation wrapper `scripts/run_quality.sh` to run `pytest` and `ruff check`
-- [ ] T005 Add `make test-download` target invoking `pytest tests/cli/test_playlist_download.py tests/integration/test_cli_download.py tests/cli/test_console_summary.py` in `Makefile`
-- [ ] T006 Add `make test-resume` target invoking `pytest tests/persistence/test_resume_progress.py tests/cli/test_resume_command.py` in `Makefile`
-- [ ] T007 Add `make test-metadata` target invoking `pytest tests/db/test_video_recording.py tests/unit/test_subtitles.py tests/perf/test_metadata_latency.py tests/reporting/test_subtitle_coverage.py` in `Makefile`
-- [ ] T008 Add `make test-throttle` target invoking `pytest tests/rate_limit/test_throttle_controls.py tests/unit/test_throttle_cli.py tests/rate_limit/test_throttle_metrics.py` in `Makefile`
+- [X] T001 Create project manifest with CLI entry point and dependencies in `pyproject.toml`
+- [X] T002 Scaffold package directories and placeholder modules in `src/video_playlist_downloader/`
+- [X] T003 Add `Makefile` with `quality` target invoking conda activation and script in `Makefile`
+- [X] T004 Create automation wrapper `scripts/run_quality.sh` to run `pytest` and `ruff check`
+- [X] T005 Add `make test-download` target invoking `pytest tests/cli/test_playlist_download.py tests/integration/test_cli_download.py tests/cli/test_console_summary.py` in `Makefile`
+- [X] T006 Add `make test-resume` target invoking `pytest tests/persistence/test_resume_progress.py tests/cli/test_resume_command.py` in `Makefile`
+- [X] T007 Add `make test-metadata` target invoking `pytest tests/db/test_video_recording.py tests/unit/test_subtitles.py tests/perf/test_metadata_latency.py tests/reporting/test_subtitle_coverage.py` in `Makefile`
+- [X] T008 Add `make test-throttle` target invoking `pytest tests/rate_limit/test_throttle_controls.py tests/unit/test_throttle_cli.py tests/rate_limit/test_throttle_metrics.py` in `Makefile`
 
 ---
 
@@ -39,13 +39,13 @@ description: "Task list for Video Playlist CLI Downloader implementation"
 
 **⚠️ CRITICAL**: All tasks in this phase must complete before any user story work.
 
-- [ ] T009 Implement configuration loader and defaults in `src/video_playlist_downloader/config.py`
-- [ ] T010 Initialize SQLite engine, session factory, and Base metadata in `src/video_playlist_downloader/persistence.py`
-- [ ] T011 Bootstrap Typer application shell with shared Rich console helpers in `src/video_playlist_downloader/cli.py`
-- [ ] T012 Create shared test fixtures (temp storage, fake yt-dlp client) in `tests/conftest.py`
-- [ ] T013 Provision runtime storage root and state database directory in `scripts/setup_storage.py`
-- [ ] T061 Implement storage capacity guard utility in `src/video_playlist_downloader/storage_guard.py`
-- [ ] T062 Wrap persistence session factories with Tenacity retry scaffolding in `src/video_playlist_downloader/persistence.py`
+- [X] T009 Implement configuration loader and defaults in `src/video_playlist_downloader/config.py`
+- [X] T010 Initialize SQLite engine, session factory, and Base metadata in `src/video_playlist_downloader/persistence.py`
+- [X] T011 Bootstrap Typer application shell with shared Rich console helpers in `src/video_playlist_downloader/cli.py`
+- [X] T012 Create shared test fixtures (temp storage, fake yt-dlp client) in `tests/conftest.py`
+- [X] T013 Provision runtime storage root and state database directory in `scripts/setup_storage.py`
+- [X] T061 Implement storage capacity guard utility in `src/video_playlist_downloader/storage_guard.py`
+- [X] T062 Wrap persistence session factories with Tenacity retry scaffolding in `src/video_playlist_downloader/persistence.py`
 
 **Checkpoint**: Foundation ready – CLI skeleton, configuration, persistence, and shared fixtures in place.
 
