@@ -44,6 +44,8 @@ description: "Task list for Video Playlist CLI Downloader implementation"
 - [ ] T011 Bootstrap Typer application shell with shared Rich console helpers in `src/video_playlist_downloader/cli.py`
 - [ ] T012 Create shared test fixtures (temp storage, fake yt-dlp client) in `tests/conftest.py`
 - [ ] T013 Provision runtime storage root and state database directory in `scripts/setup_storage.py`
+- [ ] T061 Implement storage capacity guard utility in `src/video_playlist_downloader/storage_guard.py`
+- [ ] T062 Wrap persistence session factories with Tenacity retry scaffolding in `src/video_playlist_downloader/persistence.py`
 
 **Checkpoint**: Foundation ready – CLI skeleton, configuration, persistence, and shared fixtures in place.
 
@@ -62,6 +64,8 @@ description: "Task list for Video Playlist CLI Downloader implementation"
 - [ ] T014 [P] [US1] Author CLI workflow test covering download and skip logging in `tests/cli/test_playlist_download.py`
 - [ ] T015 [P] [US1] Author integration test for playlist run with fixture storage in `tests/integration/test_cli_download.py`
 - [ ] T016 [P] [US1] Author console summary snapshot test to verify Rich output includes totals, pending count, throttle state, elapsed time, and ETA table in `tests/cli/test_console_summary.py`
+- [ ] T057 [P] [US1] Author status latency benchmark for 500-item playlists in `tests/perf/test_status_latency.py`
+- [ ] T058 [P] [US1] Author low disk capacity failure test in `tests/integration/test_low_disk_abort.py`
 
 ### Implementation for User Story 1
 
@@ -70,6 +74,8 @@ description: "Task list for Video Playlist CLI Downloader implementation"
 - [ ] T019 [US1] Persist session activity and skip reasons to database log in `src/video_playlist_downloader/persistence.py`
 - [ ] T020 [US1] Align CLI contract with OpenAPI expectations in `tests/contract/test_contract_alignment.py`
 - [ ] T021 [US1] Emit Rich progress and summary table covering totals, pending items, elapsed time, throttle status, and ETA in `src/video_playlist_downloader/cli.py`
+- [ ] T059 [US1] Instrument session summary timing and publish latency metrics in `src/video_playlist_downloader/cli.py` and `reports/quality-summary.md`
+- [ ] T060 [US1] Integrate storage capacity guard into download flow with Rich warnings in `src/video_playlist_downloader/cli.py`
 
 **Checkpoint**: Playlist downloads execute end-to-end with skipped videos logged, progress visible, and contract validated.
 
@@ -88,6 +94,7 @@ description: "Task list for Video Playlist CLI Downloader implementation"
 - [ ] T022 [P] [US2] Author persistence checkpoint test for resume flow in `tests/persistence/test_resume_progress.py`
 - [ ] T023 [P] [US2] Author CLI resume command test validating restart behavior in `tests/cli/test_resume_command.py`
 - [ ] T051 [P] [US2] Author offline continuity test verifying cached manifest supports downloads without network in `tests/integration/test_offline_resume.py`
+- [ ] T063 [P] [US2] Author transient database retry test in `tests/persistence/test_db_retry.py`
 
 ### Implementation for User Story 2
 
@@ -97,6 +104,7 @@ description: "Task list for Video Playlist CLI Downloader implementation"
 - [ ] T027 [US2] Add session status reporting command in `src/video_playlist_downloader/cli.py`
 - [ ] T052 [US2] Persist and load cached playlist manifests for offline operation in `src/video_playlist_downloader/persistence.py`
 - [ ] T053 [US2] Consume manifest cache and continue downloads when network calls fail in `src/video_playlist_downloader/downloader.py`
+- [ ] T064 [US2] Apply Tenacity retry wrappers to persistence writes and expose retry metrics in `src/video_playlist_downloader/persistence.py`
 
 **Checkpoint**: Interrupted downloads resume seamlessly with accurate status reporting.
 

@@ -110,6 +110,8 @@ As a site reliability engineer I want to cap download concurrency and speed so t
 - **FR-009**: The solution MUST provide a single documented command that prepares the conda environment (`conda activate /ssd4/envs/llm_py310_torch271_cu128`) and runs the full automated test gate.
 - **FR-010**: Configuration (storage path, throttle values, database connection, subtitle preference) MUST be adjustable via CLI flags and/or config file without code changes.
 - **FR-011**: After playlist discovery metadata is cached, the downloader MUST continue processing queued items during transient network outages by using the cached manifest and persisting results for later sync once connectivity returns.
+- **FR-012**: The system MUST evaluate available disk space before and during downloads, aborting gracefully with operator guidance when free capacity falls below a configurable safety threshold.
+- **FR-013**: Persistence operations MUST wrap database writes in a Tenacity-backed retry strategy that surfaces retry counts and final status to operators without duplicating records.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -132,3 +134,4 @@ As a site reliability engineer I want to cap download concurrency and speed so t
 - **SC-002**: Resume functionality restores interrupted sessions and avoids re-downloading completed videos in 99% of tested interruptions.
 - **SC-003**: Metadata for 100% of downloaded videos is present in the database within 5 seconds of each file completion.
 - **SC-004**: Optional subtitle assets are captured for at least 90% of videos where the source provides subtitles, with accurate linkage in the database.
+- **SC-005**: Rich session summaries render in under 2 seconds for a representative 500-item playlist using recorded fixtures.
