@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.exc import ProgrammingError
-from sqlalchemy.orm import sessionmaker
-
 from video_playlist_downloader import metadata
+sqlalchemy = pytest.importorskip("sqlalchemy")
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 
 @pytest.fixture
