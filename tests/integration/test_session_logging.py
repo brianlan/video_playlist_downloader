@@ -7,6 +7,7 @@ import pytest
 
 from video_playlist_downloader import cli
 from video_playlist_downloader.downloader import DownloadSummary, SkipRecord
+from video_playlist_downloader.persistence import load_playlist_manifest
 
 
 @pytest.mark.usefixtures("storage_root")
@@ -27,6 +28,7 @@ def test_download_logs_session_activity_and_skips(monkeypatch, cli_runner, app_c
         applied_concurrency=2,
         applied_limit_rate="2M",
         sleep_interval=1.0,
+        manifest={"playlistUrl": playlist_url, "videos": ["https://example.com/video1"]},
     )
 
     monkeypatch.setattr(cli, "_load_configuration", lambda _: app_config)
@@ -90,3 +92,6 @@ def test_download_logs_session_activity_and_skips(monkeypatch, cli_runner, app_c
     assert quality_path.exists()
     contents = quality_path.read_text()
     assert "Quality Summary" in contents
+
+    manifest = load_playlist_manifest(app_config.storage.database, str(uuid5(NAMESPACE_URL, playlist_url)))
+    assert manifest is not None

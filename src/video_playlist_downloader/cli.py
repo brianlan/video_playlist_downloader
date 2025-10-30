@@ -22,6 +22,7 @@ from .persistence import (
     fetch_playlist_sessions,
     load_resume_checkpoint,
     record_session_run,
+    save_playlist_manifest,
 )
 from .storage_guard import InsufficientStorageError, StorageGuard
 
@@ -320,6 +321,9 @@ def download(
         playlist_url=playlist_url,
         summary=summary,
     )
+
+    if summary.manifest is not None:
+        save_playlist_manifest(config.storage.database, playlist_id, summary.manifest)
 
     _append_quality_summary(
         config,

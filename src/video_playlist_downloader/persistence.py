@@ -125,6 +125,13 @@ _SCHEMA_STATEMENTS = [
         updated_at TEXT NOT NULL
     )
     """,
+    """
+    CREATE TABLE IF NOT EXISTS playlist_manifests (
+        playlist_id TEXT PRIMARY KEY,
+        manifest TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    )
+    """,
 ]
 
 
@@ -282,6 +289,15 @@ def _ensure_schema_columns(connection: sqlite3.Connection) -> None:
         )
         """
     )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS playlist_manifests (
+            playlist_id TEXT PRIMARY KEY,
+            manifest TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
 
 
 
@@ -404,6 +420,53 @@ def fetch_playlist_sessions(database_path: Path, playlist_url: str) -> list[dict
         connection.close()
 
 
+def save_playlist_manifest(
+    database_path: Path, playlist_id: str, manifest: Dict[str, Any]
+) -> None:
+    _initialize_sqlite_schema(database_path)
+    connection = sqlite3.connect(database_path)
+    try:
+        connection.execute(
+            """
+            INSERT INTO playlist_manifests (
+                playlist_id,
+                manifest,
+                updated_at
+            )
+            VALUES (?, ?, ?)
+            ON CONFLICT(playlist_id) DO UPDATE SET
+                manifest = excluded.manifest,
+                updated_at = excluded.updated_at
+            """,
+            (
+                playlist_id,
+                json.dumps(manifest),
+                _utc_now_iso(),
+            ),
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+
+def load_playlist_manifest(
+    database_path: Path, playlist_id: str
+) -> Optional[Dict[str, Any]]:
+    _initialize_sqlite_schema(database_path)
+    connection = sqlite3.connect(database_path)
+    connection.row_factory = sqlite3.Row
+    try:
+        row = connection.execute(
+            "SELECT manifest FROM playlist_manifests WHERE playlist_id = ?",
+            (playlist_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        return json.loads(row["manifest"])
+    finally:
+        connection.close()
+
+
 def _serialize_sequence(values: Tuple[str, ...]) -> str:
     return json.dumps(list(values))
 
@@ -503,6 +566,9 @@ def load_resume_checkpoint(
         ).fetchone()
         if row is None:
             return None
+        manifest = _deserialize_object(row["manifest"])
+        if manifest is None:
+            manifest = load_playlist_manifest(database_path, row["playlist_id"])
         return ResumeCheckpoint(
             session_id=row["session_id"],
             playlist_id=row["playlist_id"],
@@ -511,7 +577,7 @@ def load_resume_checkpoint(
             pending_videos=_deserialize_sequence(row["pending_videos"]),
             throttle_profile=json.loads(row["throttle_profile"]),
             resumed_from=row["resumed_from"],
-            manifest=_deserialize_object(row["manifest"]),
+            manifest=manifest,
         )
     finally:
         connection.close()
@@ -529,4 +595,6 @@ __all__ = [
     "ResumeCheckpoint",
     "save_resume_checkpoint",
     "load_resume_checkpoint",
+    "save_playlist_manifest",
+    "load_playlist_manifest",
 ]

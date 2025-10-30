@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import time
-from typing import TYPE_CHECKING, Iterable, List, Optional, Sequence, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 from .config import AppConfig
 
@@ -38,6 +38,7 @@ class DownloadSummary:
     applied_limit_rate: Optional[str]
     sleep_interval: float
     skipped_items: Tuple[SkipRecord, ...] = field(default_factory=tuple)
+    manifest: Optional[Dict[str, Any]] = None
 
 
 class PlaylistDownloader:
@@ -114,6 +115,7 @@ class PlaylistDownloader:
             applied_concurrency=applied_concurrency,
             applied_limit_rate=applied_limit_rate,
             sleep_interval=self.config.throttle.sleep_interval,
+            manifest={"playlistUrl": self.playlist_url, "videos": list(videos)},
         )
 
 
@@ -135,6 +137,10 @@ class PlaylistDownloader:
 
         completed = list(checkpoint.completed_videos)
         pending_videos = list(checkpoint.pending_videos)
+        if not pending_videos and checkpoint.manifest:
+            manifest_videos = checkpoint.manifest.get("videos", [])
+            completed_set = set(completed)
+            pending_videos = [vid for vid in manifest_videos if vid not in completed_set]
 
         start = time.perf_counter()
         newly_completed = self._download_videos(pending_videos)
@@ -142,9 +148,14 @@ class PlaylistDownloader:
 
         completed.extend(newly_completed)
         failed = len(pending_videos) - len(newly_completed)
+        total_videos = (
+            len(checkpoint.manifest.get("videos", []))
+            if checkpoint.manifest
+            else len(checkpoint.completed_videos) + len(checkpoint.pending_videos)
+        )
 
         return DownloadSummary(
-            total=len(checkpoint.completed_videos) + len(checkpoint.pending_videos),
+            total=total_videos,
             completed=len(completed),
             skipped=0,
             failed=failed,
@@ -155,6 +166,7 @@ class PlaylistDownloader:
             applied_concurrency=applied_concurrency,
             applied_limit_rate=applied_limit_rate,
             sleep_interval=sleep_interval,
+            manifest=checkpoint.manifest,
         )
 
 

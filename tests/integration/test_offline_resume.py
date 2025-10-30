@@ -10,6 +10,7 @@ from video_playlist_downloader.persistence import (
     PersistenceConfig,
     ResumeCheckpoint,
     configure_persistence,
+    save_playlist_manifest,
     save_resume_checkpoint,
 )
 
@@ -21,18 +22,22 @@ def test_resume_uses_checkpoint_without_network(monkeypatch, cli_runner, app_con
 
     configure_persistence(PersistenceConfig(database_path=database_path))
 
+    manifest = {"playlistUrl": playlist_url, "videos": ["video-a", "video-b", "video-c"]}
+    save_playlist_manifest(database_path, "playlist-abc", manifest)
+
     checkpoint = ResumeCheckpoint(
         session_id="session-123",
         playlist_id="playlist-abc",
         playlist_url=playlist_url,
         completed_videos=("video-a",),
-        pending_videos=("video-b", "video-c"),
+        pending_videos=(),
         throttle_profile={
             "maxConcurrency": 2,
             "limitRate": "2M",
             "sleepIntervalSeconds": 1.0,
         },
         resumed_from=None,
+        manifest=None,
     )
 
     save_resume_checkpoint(database_path, checkpoint)
