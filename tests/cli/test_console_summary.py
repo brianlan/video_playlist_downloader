@@ -1,16 +1,15 @@
 from __future__ import annotations
 
-from types import SimpleNamespace
-
 import pytest
 
 from video_playlist_downloader import cli
+from video_playlist_downloader.downloader import DownloadSummary
 
 
 @pytest.mark.usefixtures("storage_root")
 def test_console_summary_contains_key_metrics(monkeypatch, cli_runner, app_config):
     playlist_url = "https://example.com/playlist"
-    summary = SimpleNamespace(
+    summary = DownloadSummary(
         total=10,
         completed=6,
         skipped=2,

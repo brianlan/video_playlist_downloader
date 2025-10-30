@@ -1,17 +1,16 @@
 from __future__ import annotations
 
-from types import SimpleNamespace
-
 import pytest
 
 from video_playlist_downloader import cli
 from video_playlist_downloader.config import AppConfig
+from video_playlist_downloader.downloader import DownloadSummary
 
 
 @pytest.mark.usefixtures("storage_root")
 def test_download_command_initializes_persistence(monkeypatch, cli_runner, app_config: AppConfig):
     playlist_url = "https://example.com/playlist"
-    summary = SimpleNamespace(
+    summary = DownloadSummary(
         total=3,
         completed=3,
         skipped=0,
@@ -26,10 +25,11 @@ def test_download_command_initializes_persistence(monkeypatch, cli_runner, app_c
 
     configure_calls: list[object] = []
 
+    real_configure_persistence = cli.configure_persistence
+
     def fake_configure_persistence(config) -> None:
         configure_calls.append(config)
-        config.database_path.parent.mkdir(parents=True, exist_ok=True)
-        config.database_path.touch(exist_ok=True)
+        real_configure_persistence(config)
 
     monkeypatch.setattr(cli, "configure_persistence", fake_configure_persistence)
 

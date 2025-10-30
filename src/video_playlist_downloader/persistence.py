@@ -6,8 +6,10 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from dataclasses import dataclass
+from datetime import datetime, timezone
+import sqlite3
 from pathlib import Path
-from typing import Any, Iterator, Optional
+from typing import Any, Iterable, Iterator, Optional
 from types import SimpleNamespace
 
 try:
@@ -74,6 +76,37 @@ else:
 
         metadata = SimpleNamespace(create_all=lambda *args, **kwargs: None)
 
+from .downloader import DownloadSummary
+
+_SCHEMA_STATEMENTS = [
+    """
+    CREATE TABLE IF NOT EXISTS session_activity (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id TEXT NOT NULL,
+        playlist_url TEXT NOT NULL,
+        total INTEGER NOT NULL,
+        completed INTEGER NOT NULL,
+        skipped INTEGER NOT NULL,
+        failed INTEGER NOT NULL,
+        pending INTEGER NOT NULL,
+        throttle_label TEXT NOT NULL,
+        elapsed_seconds REAL NOT NULL,
+        eta_seconds REAL NOT NULL,
+        created_at TEXT NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS session_skips (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id TEXT NOT NULL,
+        video_url TEXT NOT NULL,
+        reason TEXT NOT NULL,
+        created_at TEXT NOT NULL
+    )
+    """,
+]
+
+
 @dataclass(frozen=True)
 class PersistenceConfig:
     """Configuration describing how to connect to the application database."""
@@ -105,8 +138,9 @@ def configure_persistence(config: PersistenceConfig) -> None:
     global _engine, _session_factory
 
     engine = _build_engine(config.database_path, echo=config.echo)
+    config.database_path.touch(exist_ok=True)
+    _initialize_sqlite_schema(config.database_path)
     if engine is None:
-        config.database_path.touch(exist_ok=True)
         _engine = None
         _session_factory = None
         return
@@ -166,6 +200,92 @@ def session_scope() -> Iterator[Session]:
         session.close()
 
 
+def _initialize_sqlite_schema(database_path: Path) -> None:
+    connection = sqlite3.connect(database_path)
+    try:
+        for statement in _SCHEMA_STATEMENTS:
+            connection.execute(statement)
+        connection.commit()
+    finally:
+        connection.close()
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def record_session_run(
+    database_path: Path,
+    *,
+    session_id: str,
+    playlist_url: str,
+    summary: DownloadSummary,
+) -> None:
+    """
+    Persist a completed session summary and any associated skip records.
+    """
+
+    connection = sqlite3.connect(database_path)
+    try:
+        connection.execute(
+            """
+            INSERT INTO session_activity (
+                session_id,
+                playlist_url,
+                total,
+                completed,
+                skipped,
+                failed,
+                pending,
+                throttle_label,
+                elapsed_seconds,
+                eta_seconds,
+                created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                session_id,
+                playlist_url,
+                summary.total,
+                summary.completed,
+                summary.skipped,
+                summary.failed,
+                summary.pending,
+                summary.throttle_label,
+                summary.elapsed_seconds,
+                summary.eta_seconds,
+                _utc_now_iso(),
+            ),
+        )
+
+        if summary.skipped_items:
+            connection.executemany(
+                """
+                INSERT INTO session_skips (
+                    session_id,
+                    video_url,
+                    reason,
+                    created_at
+                )
+                VALUES (?, ?, ?, ?)
+                """,
+                (
+                    (
+                        session_id,
+                        skip.video_url,
+                        skip.reason,
+                        _utc_now_iso(),
+                    )
+                    for skip in summary.skipped_items
+                ),
+            )
+
+        connection.commit()
+    finally:
+        connection.close()
+
+
 __all__ = [
     "Base",
     "PersistenceConfig",
@@ -173,4 +293,5 @@ __all__ = [
     "get_engine",
     "get_session_factory",
     "session_scope",
+    "record_session_run",
 ]

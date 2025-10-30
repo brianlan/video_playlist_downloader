@@ -4,11 +4,19 @@ Playlist download orchestration logic.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import time
-from typing import Iterable, List, Optional, Sequence
+from typing import Iterable, List, Optional, Sequence, Tuple
 
 from .config import AppConfig, ThrottleSettings
+
+
+@dataclass(frozen=True)
+class SkipRecord:
+    """Details about a skipped video."""
+
+    video_url: str
+    reason: str
 
 
 @dataclass(frozen=True)
@@ -23,6 +31,7 @@ class DownloadSummary:
     throttle_label: str
     elapsed_seconds: float
     eta_seconds: float
+    skipped_items: Tuple[SkipRecord, ...] = field(default_factory=tuple)
 
 
 class PlaylistDownloader:
@@ -112,4 +121,4 @@ class PlaylistDownloader:
         )
 
 
-__all__ = ["DownloadSummary", "PlaylistDownloader"]
+__all__ = ["DownloadSummary", "PlaylistDownloader", "SkipRecord"]

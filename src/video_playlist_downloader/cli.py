@@ -7,13 +7,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
+from uuid import uuid4
 
 import typer
 from rich.console import Console
 
 from .config import AppConfig, load_config
 from .downloader import DownloadSummary, PlaylistDownloader
-from .persistence import PersistenceConfig, configure_persistence
+from .persistence import PersistenceConfig, configure_persistence, record_session_run
 from .storage_guard import InsufficientStorageError, StorageGuard
 
 app = typer.Typer(help="Download and manage playlist archives from Bilibili.")
@@ -170,8 +171,17 @@ def download(
         max_concurrency=max_concurrency,
         limit_rate=limit_rate,
     )
+    session_id = str(uuid4())
+
+    record_session_run(
+        config.storage.database,
+        session_id=session_id,
+        playlist_url=playlist_url,
+        summary=summary,
+    )
 
     _render_download_summary(summary)
+    console.print(f"Session ID: {session_id}")
 
 
 @app.command()
