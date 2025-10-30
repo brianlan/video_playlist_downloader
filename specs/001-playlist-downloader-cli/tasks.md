@@ -92,10 +92,10 @@ description: "Task list for Video Playlist CLI Downloader implementation"
 
 > **MANDATE: Write these tests FIRST, ensure they FAIL before implementation, and document the command that executes them.**
 
-- [ ] T022 [P] [US2] Author persistence checkpoint test for resume flow in `tests/persistence/test_resume_progress.py`
-- [ ] T023 [P] [US2] Author CLI resume command test validating restart behavior in `tests/cli/test_resume_command.py`
-- [ ] T051 [P] [US2] Author offline continuity test verifying cached manifest supports downloads without network in `tests/integration/test_offline_resume.py`
-- [ ] T063 [P] [US2] Author transient database retry test in `tests/persistence/test_db_retry.py`
+- [X] T022 [P] [US2] Author persistence checkpoint test for resume flow in `tests/persistence/test_resume_progress.py`
+- [X] T023 [P] [US2] Author CLI resume command test validating restart behavior in `tests/cli/test_resume_command.py`
+- [X] T051 [P] [US2] Author offline continuity test verifying cached manifest supports downloads without network in `tests/integration/test_offline_resume.py`
+- [X] T063 [P] [US2] Author transient database retry test in `tests/persistence/test_db_retry.py`
 
 ### Implementation for User Story 2
 
