@@ -17,8 +17,10 @@ from .config import AppConfig, load_config
 from .downloader import DownloadSummary, PlaylistDownloader
 from .persistence import (
     PersistenceConfig,
+    ResumeCheckpoint,
     configure_persistence,
     fetch_playlist_sessions,
+    load_resume_checkpoint,
     record_session_run,
 )
 from .storage_guard import InsufficientStorageError, StorageGuard
@@ -209,6 +211,29 @@ def _build_status_contract_payload(
     }
 
 
+def _build_resume_contract_payload(
+    *,
+    session_id: str,
+    resumed_from: str,
+    playlist_id: str,
+    summary: DownloadSummary,
+) -> dict[str, Any]:
+    return {
+        "sessionId": session_id,
+        "resumedFrom": resumed_from,
+        "playlistId": playlist_id,
+        "videosTotal": summary.total,
+        "videosCompleted": summary.completed,
+        "videosSkipped": summary.skipped,
+        "videosFailed": summary.failed,
+        "throttleProfile": {
+            "maxConcurrency": summary.applied_concurrency,
+            "limitRate": summary.applied_limit_rate,
+            "sleepIntervalSeconds": summary.sleep_interval,
+        },
+    }
+
+
 @app.callback()
 def main(
     ctx: typer.Context,
@@ -353,14 +378,67 @@ def status(
 def resume(
     ctx: typer.Context,
     session_id: str = typer.Argument(..., help="Session identifier to resume."),
+    output_format: Literal["text", "json"] = typer.Option(
+        "text",
+        "--format",
+        "-f",
+        help="Output format for command results.",
+    ),
 ) -> None:
     """
     Resume a previously interrupted download session.
-
-    Placeholder implementation, full resume workflow will arrive in User Story 2.
     """
 
-    console.print(f"[yellow]Resume requested for session {session_id}[/yellow]")
+    config: AppConfig = ctx.obj["config"]
+    _ensure_storage_paths(config)
+    _configure_database(config)
+
+    checkpoint: Optional[ResumeCheckpoint] = load_resume_checkpoint(
+        config.storage.database, session_id
+    )
+    if checkpoint is None:
+        typer.echo(
+            typer.style(f"No checkpoint found for session {session_id}", fg=typer.colors.RED),
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    downloader = PlaylistDownloader(
+        config=config,
+        playlist_url=checkpoint.playlist_url,
+    )
+    summary = downloader.resume_from_checkpoint(checkpoint)
+    new_session_id = str(uuid4())
+
+    record_session_run(
+        config.storage.database,
+        session_id=new_session_id,
+        playlist_id=checkpoint.playlist_id,
+        playlist_url=checkpoint.playlist_url,
+        summary=summary,
+        status="resumed",
+    )
+
+    _append_quality_summary(
+        config,
+        session_id=new_session_id,
+        playlist_id=checkpoint.playlist_id,
+        summary=summary,
+    )
+
+    if output_format == "json":
+        payload = _build_resume_contract_payload(
+            session_id=new_session_id,
+            resumed_from=session_id,
+            playlist_id=checkpoint.playlist_id,
+            summary=summary,
+        )
+        typer.echo(json.dumps(payload))
+    else:
+        _render_download_summary(summary)
+        console.print(
+            f"Session ID: {new_session_id} (resumed from {session_id})"
+        )
 
 
 @app.command()

@@ -6,13 +6,20 @@ import pytest
 
 from video_playlist_downloader import cli
 from video_playlist_downloader.downloader import DownloadSummary
-from video_playlist_downloader.persistence import ResumeCheckpoint, save_resume_checkpoint
+from video_playlist_downloader.persistence import (
+    PersistenceConfig,
+    ResumeCheckpoint,
+    configure_persistence,
+    save_resume_checkpoint,
+)
 
 
 @pytest.mark.usefixtures("storage_root")
 def test_resume_uses_checkpoint_without_network(monkeypatch, cli_runner, app_config):
     playlist_url = "https://example.com/playlist"
     database_path = app_config.storage.database
+
+    configure_persistence(PersistenceConfig(database_path=database_path))
 
     checkpoint = ResumeCheckpoint(
         session_id="session-123",

@@ -45,11 +45,11 @@ def test_resume_cli_rehydrates_checkpoint(monkeypatch, cli_runner, app_config):
 
     monkeypatch.setattr(cli, "_load_configuration", lambda _: app_config)
     load_calls = {}
-    monkeypatch.setattr(
-        cli,
-        "load_resume_checkpoint",
-        lambda db, session_id: load_calls.setdefault("session_id", session_id) or checkpoint,
-    )
+    def fake_load(db, session_id):
+        load_calls["session_id"] = session_id
+        return checkpoint
+
+    monkeypatch.setattr(cli, "load_resume_checkpoint", fake_load)
 
     invoked = {}
 

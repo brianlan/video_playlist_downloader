@@ -4,12 +4,19 @@ import sqlite3
 
 import pytest
 
-from video_playlist_downloader.persistence import ResumeCheckpoint, save_resume_checkpoint
+from video_playlist_downloader.persistence import (
+    PersistenceConfig,
+    ResumeCheckpoint,
+    configure_persistence,
+    save_resume_checkpoint,
+)
 
 
 @pytest.mark.usefixtures("storage_root")
 def test_save_resume_checkpoint_retries_on_operational_error(monkeypatch, app_config):
     attempts = {"execute": 0}
+
+    configure_persistence(PersistenceConfig(database_path=app_config.storage.database))
 
     class FlakyConnection:
         def __init__(self) -> None:

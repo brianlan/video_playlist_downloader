@@ -6,9 +6,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import time
-from typing import Iterable, List, Optional, Sequence, Tuple
+from typing import TYPE_CHECKING, Iterable, List, Optional, Sequence, Tuple
 
 from .config import AppConfig
+
+if TYPE_CHECKING:  # pragma: no cover - only for type checking
+    from .persistence import ResumeCheckpoint
 
 
 @dataclass(frozen=True)
@@ -111,6 +114,47 @@ class PlaylistDownloader:
             applied_concurrency=applied_concurrency,
             applied_limit_rate=applied_limit_rate,
             sleep_interval=self.config.throttle.sleep_interval,
+        )
+
+
+    def resume_from_checkpoint(
+        self,
+        checkpoint: "ResumeCheckpoint",
+    ) -> DownloadSummary:
+        """Resume downloads using data stored in a checkpoint."""
+
+        applied_concurrency = (
+            checkpoint.throttle_profile.get("maxConcurrency")
+            or self.config.throttle.max_concurrency
+        )
+        applied_limit_rate = checkpoint.throttle_profile.get("limitRate")
+        sleep_interval = checkpoint.throttle_profile.get(
+            "sleepIntervalSeconds", self.config.throttle.sleep_interval
+        )
+        throttle_label = f"{applied_concurrency} concurrent @ {applied_limit_rate or 'unbounded'}"
+
+        completed = list(checkpoint.completed_videos)
+        pending_videos = list(checkpoint.pending_videos)
+
+        start = time.perf_counter()
+        newly_completed = self._download_videos(pending_videos)
+        elapsed = time.perf_counter() - start
+
+        completed.extend(newly_completed)
+        failed = len(pending_videos) - len(newly_completed)
+
+        return DownloadSummary(
+            total=len(checkpoint.completed_videos) + len(checkpoint.pending_videos),
+            completed=len(completed),
+            skipped=0,
+            failed=failed,
+            pending=0,
+            throttle_label=throttle_label,
+            elapsed_seconds=elapsed,
+            eta_seconds=0.0,
+            applied_concurrency=applied_concurrency,
+            applied_limit_rate=applied_limit_rate,
+            sleep_interval=sleep_interval,
         )
 
 

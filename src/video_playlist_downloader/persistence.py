@@ -7,9 +7,11 @@ from __future__ import annotations
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import json
 import sqlite3
 from pathlib import Path
-from typing import Any, Iterator, Optional
+import time
+from typing import Any, Dict, Iterator, Optional, Tuple
 from types import SimpleNamespace
 
 try:
@@ -109,7 +111,33 @@ _SCHEMA_STATEMENTS = [
         created_at TEXT NOT NULL
     )
     """,
+    """
+    CREATE TABLE IF NOT EXISTS resume_checkpoints (
+        session_id TEXT PRIMARY KEY,
+        playlist_id TEXT NOT NULL,
+        playlist_url TEXT NOT NULL,
+        completed_videos TEXT NOT NULL,
+        pending_videos TEXT NOT NULL,
+        throttle_profile TEXT NOT NULL,
+        resumed_from TEXT,
+        manifest TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    )
+    """,
 ]
+
+
+@dataclass(frozen=True)
+class ResumeCheckpoint:
+    session_id: str
+    playlist_id: str
+    playlist_url: str
+    completed_videos: Tuple[str, ...]
+    pending_videos: Tuple[str, ...]
+    throttle_profile: Dict[str, Any]
+    resumed_from: Optional[str] = None
+    manifest: Optional[Dict[str, Any]] = None
 
 
 @dataclass(frozen=True)
@@ -221,9 +249,9 @@ def _utc_now_iso() -> str:
 
 
 def _ensure_schema_columns(connection: sqlite3.Connection) -> None:
-    columns = {
-        row[1]: row for row in connection.execute("PRAGMA table_info(session_activity)")
-    }
+    cursor = connection.execute("PRAGMA table_info(session_activity)")
+    rows = list(cursor) if hasattr(cursor, "__iter__") else []
+    columns = {row[1]: row for row in rows}
     required_columns = {
         "playlist_id": "TEXT",
         "status": "TEXT",
@@ -236,6 +264,25 @@ def _ensure_schema_columns(connection: sqlite3.Connection) -> None:
             connection.execute(
                 f"ALTER TABLE session_activity ADD COLUMN {name} {column_type}"
             )
+
+    # Ensure resume_checkpoints table exists
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS resume_checkpoints (
+            session_id TEXT PRIMARY KEY,
+            playlist_id TEXT NOT NULL,
+            playlist_url TEXT NOT NULL,
+            completed_videos TEXT NOT NULL,
+            pending_videos TEXT NOT NULL,
+            throttle_profile TEXT NOT NULL,
+            resumed_from TEXT,
+            manifest TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+
 
 
 def record_session_run(
@@ -357,6 +404,119 @@ def fetch_playlist_sessions(database_path: Path, playlist_url: str) -> list[dict
         connection.close()
 
 
+def _serialize_sequence(values: Tuple[str, ...]) -> str:
+    return json.dumps(list(values))
+
+
+def _deserialize_sequence(raw: str) -> Tuple[str, ...]:
+    return tuple(json.loads(raw))
+
+
+def _serialize_object(obj: Optional[Dict[str, Any]]) -> Optional[str]:
+    if obj is None:
+        return None
+    return json.dumps(obj)
+
+
+def _deserialize_object(raw: Optional[str]) -> Optional[Dict[str, Any]]:
+    if not raw:
+        return None
+    return json.loads(raw)
+
+
+def save_resume_checkpoint(database_path: Path, checkpoint: ResumeCheckpoint) -> None:
+    attempts = 0
+    last_error: Optional[sqlite3.OperationalError] = None
+
+    while attempts < 3:
+        try:
+            _initialize_sqlite_schema(database_path)
+            connection = sqlite3.connect(database_path)
+            try:
+                now = _utc_now_iso()
+                connection.execute(
+                    """
+                    INSERT INTO resume_checkpoints (
+                        session_id,
+                        playlist_id,
+                        playlist_url,
+                        completed_videos,
+                        pending_videos,
+                        throttle_profile,
+                        resumed_from,
+                        manifest,
+                        created_at,
+                        updated_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(session_id) DO UPDATE SET
+                        playlist_id = excluded.playlist_id,
+                        playlist_url = excluded.playlist_url,
+                        completed_videos = excluded.completed_videos,
+                        pending_videos = excluded.pending_videos,
+                        throttle_profile = excluded.throttle_profile,
+                        resumed_from = excluded.resumed_from,
+                        manifest = excluded.manifest,
+                        updated_at = excluded.updated_at
+                    """,
+                    (
+                        checkpoint.session_id,
+                        checkpoint.playlist_id,
+                        checkpoint.playlist_url,
+                        _serialize_sequence(checkpoint.completed_videos),
+                        _serialize_sequence(checkpoint.pending_videos),
+                        json.dumps(checkpoint.throttle_profile),
+                        checkpoint.resumed_from,
+                        _serialize_object(checkpoint.manifest),
+                        now,
+                        now,
+                    ),
+                )
+                connection.commit()
+                return
+            finally:
+                connection.close()
+        except sqlite3.OperationalError as error:  # pragma: no cover - exercised in tests
+            last_error = error
+            attempts += 1
+            time.sleep(min(0.1 * attempts, 0.5))
+
+    if last_error is not None:
+        raise last_error
+
+
+def load_resume_checkpoint(
+    database_path: Path, session_id: str
+) -> Optional[ResumeCheckpoint]:
+    _initialize_sqlite_schema(database_path)
+    connection = sqlite3.connect(database_path)
+    connection.row_factory = sqlite3.Row
+    try:
+        row = connection.execute(
+            """
+            SELECT session_id, playlist_id, playlist_url, completed_videos, pending_videos,
+                   throttle_profile, resumed_from, manifest
+            FROM resume_checkpoints
+            WHERE session_id = ?
+            """,
+            (session_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        return ResumeCheckpoint(
+            session_id=row["session_id"],
+            playlist_id=row["playlist_id"],
+            playlist_url=row["playlist_url"],
+            completed_videos=_deserialize_sequence(row["completed_videos"]),
+            pending_videos=_deserialize_sequence(row["pending_videos"]),
+            throttle_profile=json.loads(row["throttle_profile"]),
+            resumed_from=row["resumed_from"],
+            manifest=_deserialize_object(row["manifest"]),
+        )
+    finally:
+        connection.close()
+
+
 __all__ = [
     "Base",
     "PersistenceConfig",
@@ -366,4 +526,7 @@ __all__ = [
     "session_scope",
     "record_session_run",
     "fetch_playlist_sessions",
+    "ResumeCheckpoint",
+    "save_resume_checkpoint",
+    "load_resume_checkpoint",
 ]

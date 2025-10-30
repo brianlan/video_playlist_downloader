@@ -99,13 +99,13 @@ description: "Task list for Video Playlist CLI Downloader implementation"
 
 ### Implementation for User Story 2
 
-- [ ] T024 [US2] Extend session persistence with checkpoint snapshots and hashes in `src/video_playlist_downloader/persistence.py`
-- [ ] T025 [US2] Update downloader to rebuild queues from checkpoints in `src/video_playlist_downloader/downloader.py`
-- [ ] T026 [US2] Implement `resume` CLI command wiring session lookup in `src/video_playlist_downloader/cli.py`
-- [ ] T027 [US2] Add session status reporting command in `src/video_playlist_downloader/cli.py`
+- [X] T024 [US2] Extend session persistence with checkpoint snapshots and hashes in `src/video_playlist_downloader/persistence.py`
+- [X] T025 [US2] Update downloader to rebuild queues from checkpoints in `src/video_playlist_downloader/downloader.py`
+- [X] T026 [US2] Implement `resume` CLI command wiring session lookup in `src/video_playlist_downloader/cli.py`
+- [X] T027 [US2] Add session status reporting command in `src/video_playlist_downloader/cli.py`
 - [ ] T052 [US2] Persist and load cached playlist manifests for offline operation in `src/video_playlist_downloader/persistence.py`
 - [ ] T053 [US2] Consume manifest cache and continue downloads when network calls fail in `src/video_playlist_downloader/downloader.py`
-- [ ] T064 [US2] Apply Tenacity retry wrappers to persistence writes and expose retry metrics in `src/video_playlist_downloader/persistence.py`
+- [X] T064 [US2] Apply Tenacity retry wrappers to persistence writes and expose retry metrics in `src/video_playlist_downloader/persistence.py`
 
 **Checkpoint**: Interrupted downloads resume seamlessly with accurate status reporting.
 
