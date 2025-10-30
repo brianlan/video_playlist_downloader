@@ -18,6 +18,7 @@ except ModuleNotFoundError:  # pragma: no cover - optional dependency fallback
 DEFAULT_STORAGE_DIR = Path("video-storage")
 DEFAULT_REPORTS_DIR = Path("reports")
 DEFAULT_DATABASE_FILENAME = "state.db"
+DEFAULT_MIN_FREE_GB = 1.0
 
 
 @dataclass(frozen=True)
@@ -49,6 +50,7 @@ class AppConfig:
     throttle: ThrottleSettings
     subtitle_languages: tuple[str, ...] = field(default_factory=tuple)
     env_file: Optional[Path] = None
+    minimum_free_gb: float = DEFAULT_MIN_FREE_GB
 
 
 def _comma_separated_list(raw: Optional[str]) -> tuple[str, ...]:
@@ -94,12 +96,15 @@ def load_config(dotenv_path: Optional[Path] = None) -> AppConfig:
         reports=reports_dir,
     )
 
+    minimum_free_gb = float(os.getenv("VPD_MIN_FREE_GB", str(DEFAULT_MIN_FREE_GB)))
+
     return AppConfig(
         storage=storage_paths,
         throttle=throttle,
         subtitle_languages=subtitle_languages,
         env_file=env_file if env_file.exists() else None,
+        minimum_free_gb=minimum_free_gb,
     )
 
 
-__all__ = ["AppConfig", "StoragePaths", "ThrottleSettings", "load_config"]
+__all__ = ["AppConfig", "StoragePaths", "ThrottleSettings", "load_config", "DEFAULT_MIN_FREE_GB"]

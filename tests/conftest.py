@@ -53,10 +53,11 @@ def app_config(storage_root: Path) -> AppConfig:
         throttle=ThrottleSettings(),
         subtitle_languages=(),
         env_file=None,
+        minimum_free_gb=0.1,
     )
 
 
 @pytest.fixture
 def cli_runner() -> CliRunner:
     """Typer CLI runner for invoking commands in tests."""
-    return CliRunner()
+    return CliRunner(mix_stderr=False)

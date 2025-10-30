@@ -7,17 +7,72 @@ from __future__ import annotations
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator, Optional
+from typing import Any, Iterator, Optional
+from types import SimpleNamespace
 
-from sqlalchemy import Engine, create_engine
-from sqlalchemy import exc as sa_exc
-from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential_jitter
+try:
+    from sqlalchemy import Engine, create_engine  # type: ignore
+    from sqlalchemy import exc as sa_exc  # type: ignore
+    from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker  # type: ignore
+    _SQLALCHEMY_AVAILABLE = True
+except ModuleNotFoundError:  # pragma: no cover - optional dependency fallback
+    Engine = Any  # type: ignore
+    Session = Any  # type: ignore
+
+    class _OperationalError(RuntimeError):
+        ...
+
+    class DeclarativeBase:  # type: ignore
+        pass
+
+    def create_engine(*args: Any, **kwargs: Any) -> Any:  # type: ignore
+        raise RuntimeError("SQLAlchemy is required to use persistence features.")
+
+    class _SessionMaker:
+        def __call__(self, *args: Any, **kwargs: Any) -> Any:
+            raise RuntimeError("SQLAlchemy is required to create sessions.")
+
+    sessionmaker = _SessionMaker()  # type: ignore
+
+    sa_exc = type("sa_exc", (), {"OperationalError": _OperationalError})  # type: ignore
+    _SQLALCHEMY_AVAILABLE = False
+
+try:
+    from tenacity import (  # type: ignore
+        retry,
+        retry_if_exception_type,
+        stop_after_attempt,
+        wait_exponential_jitter,
+    )
+except ModuleNotFoundError:  # pragma: no cover - optional dependency fallback
+
+    def retry(*args: Any, **kwargs: Any):  # type: ignore
+        def decorator(func):
+            return func
+
+        return decorator
+
+    def retry_if_exception_type(*args: Any, **kwargs: Any):  # type: ignore
+        return lambda exc: False
+
+    def stop_after_attempt(*args: Any, **kwargs: Any):  # type: ignore
+        return None
+
+    def wait_exponential_jitter(*args: Any, **kwargs: Any):  # type: ignore
+        return None
 
 
-class Base(DeclarativeBase):
-    """Declarative base for ORM models."""
+if _SQLALCHEMY_AVAILABLE:
 
+    class Base(DeclarativeBase):
+        """Declarative base for ORM models."""
+
+else:
+
+    class Base:  # type: ignore[misc]
+        """Fallback base used when SQLAlchemy is unavailable."""
+
+        metadata = SimpleNamespace(create_all=lambda *args, **kwargs: None)
 
 @dataclass(frozen=True)
 class PersistenceConfig:
@@ -31,8 +86,10 @@ _engine: Optional[Engine] = None
 _session_factory: Optional[sessionmaker[Session]] = None
 
 
-def _build_engine(database_path: Path, echo: bool = False) -> Engine:
+def _build_engine(database_path: Path, echo: bool = False) -> Optional[Engine]:
     database_path.parent.mkdir(parents=True, exist_ok=True)
+    if not _SQLALCHEMY_AVAILABLE:
+        return None
     return create_engine(
         f"sqlite:///{database_path}",
         echo=echo,
@@ -48,6 +105,12 @@ def configure_persistence(config: PersistenceConfig) -> None:
     global _engine, _session_factory
 
     engine = _build_engine(config.database_path, echo=config.echo)
+    if engine is None:
+        config.database_path.touch(exist_ok=True)
+        _engine = None
+        _session_factory = None
+        return
+
     Base.metadata.create_all(engine)
 
     _engine = engine
@@ -60,12 +123,16 @@ def configure_persistence(config: PersistenceConfig) -> None:
 
 
 def get_engine() -> Engine:
+    if not _SQLALCHEMY_AVAILABLE:
+        raise RuntimeError("SQLAlchemy is required to access the engine.")
     if _engine is None:
         raise RuntimeError("Persistence not configured. Call configure_persistence() first.")
     return _engine
 
 
 def get_session_factory() -> sessionmaker[Session]:
+    if not _SQLALCHEMY_AVAILABLE:
+        raise RuntimeError("SQLAlchemy is required to create sessions.")
     if _session_factory is None:
         raise RuntimeError("Persistence not configured. Call configure_persistence() first.")
     return _session_factory
