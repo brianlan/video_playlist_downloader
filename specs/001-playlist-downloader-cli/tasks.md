@@ -121,10 +121,10 @@ description: "Task list for Video Playlist CLI Downloader implementation"
 
 > **MANDATE: Write these tests FIRST, ensure they FAIL before implementation, and document the command that executes them.**
 
-- [ ] T028 [P] [US3] Author metadata persistence test validating schema writes in `tests/db/test_video_recording.py`
-- [ ] T029 [P] [US3] Author subtitle harvesting test with language fallbacks in `tests/unit/test_subtitles.py`
-- [ ] T030 [P] [US3] Author metadata latency performance test asserting ≤5s inserts in `tests/perf/test_metadata_latency.py`
-- [ ] T031 [P] [US3] Author subtitle coverage analytics test enforcing 90% threshold in `tests/reporting/test_subtitle_coverage.py`
+- [X] T028 [P] [US3] Author metadata persistence test validating schema writes in `tests/db/test_video_recording.py`
+- [X] T029 [P] [US3] Author subtitle harvesting test with language fallbacks in `tests/unit/test_subtitles.py`
+- [X] T030 [P] [US3] Author metadata latency performance test asserting ≤5s inserts in `tests/perf/test_metadata_latency.py`
+- [X] T031 [P] [US3] Author subtitle coverage analytics test enforcing 90% threshold in `tests/reporting/test_subtitle_coverage.py`
 
 ### Implementation for User Story 3
 
