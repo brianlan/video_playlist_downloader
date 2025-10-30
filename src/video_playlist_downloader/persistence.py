@@ -78,6 +78,7 @@ else:
 
         metadata = SimpleNamespace(create_all=lambda *args, **kwargs: None)
 
+from . import metadata as metadata_module
 from .downloader import DownloadSummary
 
 _SCHEMA_STATEMENTS = [
@@ -253,6 +254,26 @@ def _initialize_sqlite_schema(database_path: Path) -> None:
 
 def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+@contextmanager
+def metadata_session_scope() -> Iterator[Optional[Session]]:
+    if not (metadata_module.SQLALCHEMY_AVAILABLE and _SQLALCHEMY_AVAILABLE):
+        yield None
+        return
+
+    engine = get_engine()
+    metadata_module.create_metadata_schema(engine)
+    SessionLocal = sessionmaker(bind=engine, future=True)
+    session = SessionLocal()
+    try:
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
 
 
 def _ensure_schema_columns(connection: sqlite3.Connection) -> None:
@@ -467,6 +488,41 @@ def load_playlist_manifest(
         connection.close()
 
 
+def persist_metadata_summary(
+    database_path: Path,
+    *,
+    playlist_id: str,
+    playlist_url: str,
+    summary: DownloadSummary,
+) -> Optional[Dict[str, Any]]:
+    if not (metadata_module.SQLALCHEMY_AVAILABLE and _SQLALCHEMY_AVAILABLE):
+        return None
+    if summary.manifest is None:
+        return None
+
+    videos = summary.manifest.get("videos", [])
+    manifest_title = summary.manifest.get("title", playlist_url)
+
+    with metadata_session_scope() as session:
+        if session is None:
+            return None
+        repo = metadata_module.MetadataRepository(session)
+        playlist = repo.get_playlist_by_source_url(playlist_url)
+        if playlist is None:
+            playlist = repo.create_playlist(
+                source_url=playlist_url,
+                title=manifest_title,
+                item_count=len(videos),
+            )
+        else:
+            playlist.item_count = len(videos)
+            playlist.title = manifest_title
+
+        repo.persist_manifest(playlist, videos)
+        coverage = repo.subtitle_coverage(playlist)
+        return coverage
+
+
 def _serialize_sequence(values: Tuple[str, ...]) -> str:
     return json.dumps(list(values))
 
@@ -590,6 +646,7 @@ __all__ = [
     "get_engine",
     "get_session_factory",
     "session_scope",
+    "metadata_session_scope",
     "record_session_run",
     "fetch_playlist_sessions",
     "ResumeCheckpoint",
@@ -597,4 +654,5 @@ __all__ = [
     "load_resume_checkpoint",
     "save_playlist_manifest",
     "load_playlist_manifest",
+    "persist_metadata_summary",
 ]

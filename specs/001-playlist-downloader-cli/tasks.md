@@ -128,12 +128,12 @@ description: "Task list for Video Playlist CLI Downloader implementation"
 
 ### Implementation for User Story 3
 
-- [ ] T032 [US3] Define SQLAlchemy models for Playlist, VideoRecord, SubtitleAsset in `src/video_playlist_downloader/metadata.py`
-- [ ] T033 [US3] Implement metadata write helpers and subtitle associations in `src/video_playlist_downloader/persistence.py`
-- [ ] T034 [US3] Implement subtitle extraction helper integrating yt-dlp metadata in `src/video_playlist_downloader/subtitles.py`
-- [ ] T035 [US3] Update downloader pipeline to persist metadata and optional subtitles in `src/video_playlist_downloader/downloader.py`
-- [ ] T036 [US3] Surface metadata summaries alongside the Rich totals/throttle table in `src/video_playlist_downloader/cli.py`
-- [ ] T037 [US3] Generate subtitle coverage report and store metrics in `reports/subtitle-metrics.json`
+- [X] T032 [US3] Define SQLAlchemy models for Playlist, VideoRecord, SubtitleAsset in `src/video_playlist_downloader/metadata.py`
+- [X] T033 [US3] Implement metadata write helpers and subtitle associations in `src/video_playlist_downloader/persistence.py`
+- [X] T034 [US3] Implement subtitle extraction helper integrating yt-dlp metadata in `src/video_playlist_downloader/subtitles.py`
+- [X] T035 [US3] Update downloader pipeline to persist metadata and optional subtitles in `src/video_playlist_downloader/downloader.py`
+- [X] T036 [US3] Surface metadata summaries alongside the Rich totals/throttle table in `src/video_playlist_downloader/cli.py`
+- [X] T037 [US3] Generate subtitle coverage report and store metrics in `reports/subtitle-metrics.json`
 
 **Checkpoint**: Metadata and subtitles stored for all downloads with CLI visibility, coverage metrics, and latency guarantees met.
 

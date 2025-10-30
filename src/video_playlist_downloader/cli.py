@@ -7,7 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import json
 from pathlib import Path
-from typing import Any, Literal, Optional
+from typing import Any, Dict, Literal, Optional
 from uuid import NAMESPACE_URL, uuid4, uuid5
 
 import typer
@@ -20,6 +20,7 @@ from .persistence import (
     ResumeCheckpoint,
     configure_persistence,
     fetch_playlist_sessions,
+    persist_metadata_summary,
     load_resume_checkpoint,
     record_session_run,
     save_playlist_manifest,
@@ -75,6 +76,29 @@ def _append_quality_summary(
             f"| {session_id} | {playlist_id} | {summary.total} | {summary.completed} | "
             f"{summary.skipped} | {summary.failed} | {summary.elapsed_seconds:.2f} |\n"
         )
+
+
+def _write_subtitle_report(config: AppConfig, coverage: Dict[str, Any]) -> None:
+    report_path = config.storage.reports / "subtitle-metrics.json"
+    report_path.write_text(json.dumps(coverage, indent=2), encoding="utf-8")
+
+
+def _persist_metadata_from_summary(
+    config: AppConfig,
+    *,
+    playlist_id: str,
+    playlist_url: str,
+    summary: DownloadSummary,
+) -> Optional[Dict[str, Any]]:
+    coverage = persist_metadata_summary(
+        config.storage.database,
+        playlist_id=playlist_id,
+        playlist_url=playlist_url,
+        summary=summary,
+    )
+    if coverage:
+        _write_subtitle_report(config, coverage)
+    return coverage
 
 
 def _ensure_storage_paths(config: AppConfig) -> None:
@@ -332,6 +356,19 @@ def download(
         summary=summary,
     )
 
+    coverage = _persist_metadata_from_summary(
+        config,
+        playlist_id=playlist_id,
+        playlist_url=playlist_url,
+        summary=summary,
+    )
+
+    if coverage:
+        console.print(
+            f"Subtitle Coverage: {coverage['coveragePercent']}% "
+            f"({coverage['videosWithSubtitles']}/{coverage['totalVideos']})"
+        )
+
     if output_format == "json":
         payload = _build_download_contract_payload(
             session_id=session_id,
@@ -429,6 +466,26 @@ def resume(
         playlist_id=checkpoint.playlist_id,
         summary=summary,
     )
+
+    if summary.manifest is not None:
+        save_playlist_manifest(
+            config.storage.database,
+            checkpoint.playlist_id,
+            summary.manifest,
+        )
+
+    coverage = _persist_metadata_from_summary(
+        config,
+        playlist_id=checkpoint.playlist_id,
+        playlist_url=checkpoint.playlist_url,
+        summary=summary,
+    )
+
+    if coverage:
+        console.print(
+            f"Subtitle Coverage: {coverage['coveragePercent']}% "
+            f"({coverage['videosWithSubtitles']}/{coverage['totalVideos']})"
+        )
 
     if output_format == "json":
         payload = _build_resume_contract_payload(

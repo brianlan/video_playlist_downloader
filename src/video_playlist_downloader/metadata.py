@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, Iterable, Optional, Sequence
 
 try:  # pragma: no cover - import guard for environments without SQLAlchemy
-    from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+    from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func, select
     from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
 
     SQLALCHEMY_AVAILABLE = True
@@ -134,6 +134,10 @@ if SQLALCHEMY_AVAILABLE:
         def __init__(self, session: Session) -> None:
             self._session = session
 
+        def get_playlist_by_source_url(self, source_url: str) -> Optional[Playlist]:
+            stmt = select(Playlist).where(Playlist.source_url == source_url)
+            return self._session.execute(stmt).scalar_one_or_none()
+
         def create_playlist(
             self,
             *,
@@ -161,17 +165,24 @@ if SQLALCHEMY_AVAILABLE:
             bvid: Optional[str],
             description: Optional[str],
         ) -> VideoRecord:
-            record = VideoRecord(
-                playlist=playlist,
-                video_url=video_url,
-                title=title,
-                duration_seconds=duration_seconds,
-                publish_time=publish_time,
-                bvid=bvid,
-                description=description,
-                download_status="completed",
+            stmt = select(VideoRecord).where(
+                VideoRecord.playlist_id == playlist.id,
+                VideoRecord.video_url == video_url,
             )
-            self._session.add(record)
+            record = self._session.execute(stmt).scalar_one_or_none()
+            if record is None:
+                record = VideoRecord(
+                    playlist=playlist,
+                    video_url=video_url,
+                )
+                self._session.add(record)
+
+            record.title = title
+            record.duration_seconds = duration_seconds
+            record.publish_time = publish_time
+            record.bvid = bvid
+            record.description = description
+            record.download_status = "completed"
             self._session.flush()
             return record
 
@@ -179,7 +190,7 @@ if SQLALCHEMY_AVAILABLE:
             """Persist a batch of videos efficiently."""
 
             for video in videos:
-                record = VideoRecord(
+                record = self.add_video(
                     playlist=video.playlist,
                     video_url=video.video_url,
                     title=video.title,
@@ -187,19 +198,89 @@ if SQLALCHEMY_AVAILABLE:
                     publish_time=video.publish_time,
                     bvid=video.bvid,
                     description=video.description,
-                    download_status=video.download_status,
                 )
-                self._session.add(record)
                 if video.subtitles:
-                    subtitle = SubtitleAsset(
-                        video=record,
-                        language_code=video.subtitles["language_code"],
-                        format=video.subtitles["format"],
-                        local_path=video.subtitles["local_path"],
-                        source_url=video.subtitles.get("source_url"),
-                    )
-                    self._session.add(subtitle)
+                    self._apply_subtitle(record, video.subtitles)
             self._session.flush()
+
+        def _apply_subtitle(self, record: VideoRecord, subtitle_data: Dict[str, Any]) -> None:
+            local_path = subtitle_data.get("local_path") or subtitle_data.get("path") or ""
+            language = subtitle_data.get("language") or subtitle_data.get("language_code") or "und"
+            format_ = subtitle_data.get("format") or subtitle_data.get("extension") or "vtt"
+            source_url = subtitle_data.get("url")
+
+            if record.subtitles is None:
+                record.subtitles = SubtitleAsset(
+                    language_code=language,
+                    format=format_,
+                    local_path=local_path,
+                    source_url=source_url,
+                )
+            else:
+                record.subtitles.language_code = language
+                record.subtitles.format = format_
+                record.subtitles.local_path = local_path
+                record.subtitles.source_url = source_url
+
+        def subtitle_coverage(self, playlist: Playlist) -> Dict[str, Any]:
+            total_stmt = select(func.count(VideoRecord.id)).where(VideoRecord.playlist_id == playlist.id)
+            total = self._session.execute(total_stmt).scalar_one()
+
+            subtitle_stmt = (
+                select(func.count(SubtitleAsset.id))
+                .join(VideoRecord, SubtitleAsset.video_id == VideoRecord.id)
+                .where(VideoRecord.playlist_id == playlist.id)
+            )
+            with_subtitles = self._session.execute(subtitle_stmt).scalar_one()
+
+            language_rows = self._session.execute(
+                select(SubtitleAsset.language_code, func.count(SubtitleAsset.id))
+                .join(VideoRecord, SubtitleAsset.video_id == VideoRecord.id)
+                .where(VideoRecord.playlist_id == playlist.id)
+                .group_by(SubtitleAsset.language_code)
+            ).all()
+            languages = {row[0]: row[1] for row in language_rows}
+
+            return generate_subtitle_coverage_report(
+                total_videos=total,
+                videos_with_subtitles=with_subtitles,
+                languages=languages,
+            )
+
+        def persist_manifest(self, playlist: Playlist, videos: Sequence[Any]) -> None:
+            for entry in videos:
+                if isinstance(entry, dict):
+                    video_url = entry.get("url") or entry.get("video_url") or entry.get("id")
+                    title = entry.get("title") or video_url
+                    duration = entry.get("duration")
+                    publish_time = entry.get("publish_time")
+                    bvid = entry.get("bvid")
+                    description = entry.get("description")
+                    subtitles = entry.get("subtitles") or []
+                else:
+                    video_url = str(entry)
+                    title = video_url
+                    duration = None
+                    publish_time = None
+                    bvid = None
+                    description = None
+                    subtitles = []
+
+                record = self.add_video(
+                    playlist=playlist,
+                    video_url=video_url,
+                    title=title,
+                    duration_seconds=duration,
+                    publish_time=publish_time,
+                    bvid=bvid,
+                    description=description,
+                )
+
+                if subtitles:
+                    self._apply_subtitle(record, subtitles[0])
+
+            self._session.flush()
+
 
 
 else:  # pragma: no cover - used in environments lacking SQLAlchemy

@@ -46,6 +46,9 @@ addopts = "--strict-markers --disable-warnings"
 pythonpath = [
   "src"
 ]
+markers = [
+  "performance: marks performance-sensitive tests",
+]
 
 [tool.ruff]
 target-version = "py310"

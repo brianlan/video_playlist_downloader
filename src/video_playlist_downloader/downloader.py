@@ -115,7 +115,7 @@ class PlaylistDownloader:
             applied_concurrency=applied_concurrency,
             applied_limit_rate=applied_limit_rate,
             sleep_interval=self.config.throttle.sleep_interval,
-            manifest={"playlistUrl": self.playlist_url, "videos": list(videos)},
+            manifest={"playlistUrl": self.playlist_url, "title": self.playlist_url, "videos": list(videos)},
         )
 
 
