@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 import time
 from typing import Iterable, List, Optional, Sequence, Tuple
 
-from .config import AppConfig, ThrottleSettings
+from .config import AppConfig
 
 
 @dataclass(frozen=True)
@@ -31,6 +31,9 @@ class DownloadSummary:
     throttle_label: str
     elapsed_seconds: float
     eta_seconds: float
+    applied_concurrency: int
+    applied_limit_rate: Optional[str]
+    sleep_interval: float
     skipped_items: Tuple[SkipRecord, ...] = field(default_factory=tuple)
 
 
@@ -63,17 +66,6 @@ class PlaylistDownloader:
 
         return []
 
-    def _format_throttle_label(
-        self,
-        throttle: ThrottleSettings,
-        *,
-        max_concurrency: Optional[int],
-        limit_rate: Optional[str],
-    ) -> str:
-        concurrency = max_concurrency or throttle.max_concurrency
-        rate = limit_rate or throttle.limit_rate or "unbounded"
-        return f"{concurrency} concurrent @ {rate}"
-
     def _download_videos(self, video_ids: Iterable[str]) -> List[str]:
         """
         Execute downloads for the provided video identifiers.
@@ -99,11 +91,9 @@ class PlaylistDownloader:
         completed_videos = self._download_videos(videos)
         elapsed = time.perf_counter() - start
 
-        throttle_label = self._format_throttle_label(
-            self.config.throttle,
-            max_concurrency=max_concurrency,
-            limit_rate=limit_rate,
-        )
+        applied_concurrency = max_concurrency or self.config.throttle.max_concurrency
+        applied_limit_rate = limit_rate or self.config.throttle.limit_rate
+        throttle_label = f"{applied_concurrency} concurrent @ {applied_limit_rate or 'unbounded'}"
 
         skipped = 0
         failed = len(videos) - len(completed_videos)
@@ -118,6 +108,9 @@ class PlaylistDownloader:
             throttle_label=throttle_label,
             elapsed_seconds=elapsed,
             eta_seconds=0.0,
+            applied_concurrency=applied_concurrency,
+            applied_limit_rate=applied_limit_rate,
+            sleep_interval=self.config.throttle.sleep_interval,
         )
 
 

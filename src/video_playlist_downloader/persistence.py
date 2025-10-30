@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import sqlite3
 from pathlib import Path
-from typing import Any, Iterable, Iterator, Optional
+from typing import Any, Iterator, Optional
 from types import SimpleNamespace
 
 try:
@@ -83,13 +83,18 @@ _SCHEMA_STATEMENTS = [
     CREATE TABLE IF NOT EXISTS session_activity (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         session_id TEXT NOT NULL,
+        playlist_id TEXT NOT NULL,
         playlist_url TEXT NOT NULL,
+        status TEXT NOT NULL,
         total INTEGER NOT NULL,
         completed INTEGER NOT NULL,
         skipped INTEGER NOT NULL,
         failed INTEGER NOT NULL,
         pending INTEGER NOT NULL,
         throttle_label TEXT NOT NULL,
+        throttle_max_concurrency INTEGER,
+        throttle_limit_rate TEXT,
+        throttle_sleep_interval REAL,
         elapsed_seconds REAL NOT NULL,
         eta_seconds REAL NOT NULL,
         created_at TEXT NOT NULL
@@ -205,6 +210,7 @@ def _initialize_sqlite_schema(database_path: Path) -> None:
     try:
         for statement in _SCHEMA_STATEMENTS:
             connection.execute(statement)
+        _ensure_schema_columns(connection)
         connection.commit()
     finally:
         connection.close()
@@ -214,12 +220,32 @@ def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _ensure_schema_columns(connection: sqlite3.Connection) -> None:
+    columns = {
+        row[1]: row for row in connection.execute("PRAGMA table_info(session_activity)")
+    }
+    required_columns = {
+        "playlist_id": "TEXT",
+        "status": "TEXT",
+        "throttle_max_concurrency": "INTEGER",
+        "throttle_limit_rate": "TEXT",
+        "throttle_sleep_interval": "REAL",
+    }
+    for name, column_type in required_columns.items():
+        if name not in columns:
+            connection.execute(
+                f"ALTER TABLE session_activity ADD COLUMN {name} {column_type}"
+            )
+
+
 def record_session_run(
     database_path: Path,
     *,
     session_id: str,
+    playlist_id: str,
     playlist_url: str,
     summary: DownloadSummary,
+    status: str = "completed",
 ) -> None:
     """
     Persist a completed session summary and any associated skip records.
@@ -231,28 +257,38 @@ def record_session_run(
             """
             INSERT INTO session_activity (
                 session_id,
+                playlist_id,
                 playlist_url,
+                status,
                 total,
                 completed,
                 skipped,
                 failed,
                 pending,
                 throttle_label,
+                throttle_max_concurrency,
+                throttle_limit_rate,
+                throttle_sleep_interval,
                 elapsed_seconds,
                 eta_seconds,
                 created_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 session_id,
+                playlist_id,
                 playlist_url,
+                status,
                 summary.total,
                 summary.completed,
                 summary.skipped,
                 summary.failed,
                 summary.pending,
                 summary.throttle_label,
+                summary.applied_concurrency,
+                summary.applied_limit_rate,
+                summary.sleep_interval,
                 summary.elapsed_seconds,
                 summary.eta_seconds,
                 _utc_now_iso(),
@@ -286,6 +322,41 @@ def record_session_run(
         connection.close()
 
 
+def fetch_playlist_sessions(database_path: Path, playlist_url: str) -> list[dict[str, Any]]:
+    """Return recorded session summaries for a playlist ordered from newest to oldest."""
+
+    connection = sqlite3.connect(database_path)
+    connection.row_factory = sqlite3.Row
+    try:
+        rows = connection.execute(
+            """
+            SELECT
+                session_id,
+                playlist_id,
+                status,
+                total,
+                completed,
+                skipped,
+                failed,
+                pending,
+                throttle_max_concurrency,
+                throttle_limit_rate,
+                throttle_sleep_interval,
+                throttle_label,
+                elapsed_seconds,
+                eta_seconds,
+                created_at
+            FROM session_activity
+            WHERE playlist_url = ?
+            ORDER BY datetime(created_at) DESC
+            """,
+            (playlist_url,),
+        ).fetchall()
+        return [dict(row) for row in rows]
+    finally:
+        connection.close()
+
+
 __all__ = [
     "Base",
     "PersistenceConfig",
@@ -294,4 +365,5 @@ __all__ = [
     "get_session_factory",
     "session_scope",
     "record_session_run",
+    "fetch_playlist_sessions",
 ]

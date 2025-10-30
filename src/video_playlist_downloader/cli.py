@@ -5,21 +5,29 @@ Command-line interface bootstrap for the Video Playlist Downloader.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 from pathlib import Path
-from typing import Optional
-from uuid import uuid4
+from typing import Any, Literal, Optional
+from uuid import NAMESPACE_URL, uuid4, uuid5
 
 import typer
 from rich.console import Console
 
 from .config import AppConfig, load_config
 from .downloader import DownloadSummary, PlaylistDownloader
-from .persistence import PersistenceConfig, configure_persistence, record_session_run
+from .persistence import (
+    PersistenceConfig,
+    configure_persistence,
+    fetch_playlist_sessions,
+    record_session_run,
+)
 from .storage_guard import InsufficientStorageError, StorageGuard
 
 app = typer.Typer(help="Download and manage playlist archives from Bilibili.")
 console = Console()
 err_console = Console(stderr=True)
+
+OUTPUT_FORMATS = ("text", "json")
 
 
 @dataclass(frozen=True)
@@ -39,6 +47,31 @@ class StatusSnapshot:
 
 def _load_configuration(config_file: Optional[Path]) -> AppConfig:
     return load_config(config_file)
+
+
+def _derive_playlist_id(playlist_url: str) -> str:
+    return str(uuid5(NAMESPACE_URL, playlist_url))
+
+
+def _append_quality_summary(
+    config: AppConfig,
+    *,
+    session_id: str,
+    playlist_id: str,
+    summary: DownloadSummary,
+) -> None:
+    report_path = config.storage.reports / "quality-summary.md"
+    if not report_path.exists():
+        report_path.write_text(
+            "# Quality Summary\n\n"
+            "| Session ID | Playlist ID | Total | Completed | Skipped | Failed | Elapsed (s) |\n"
+            "|------------|-------------|-------|-----------|---------|--------|-------------|\n"
+        )
+    with report_path.open("a", encoding="utf-8") as handle:
+        handle.write(
+            f"| {session_id} | {playlist_id} | {summary.total} | {summary.completed} | "
+            f"{summary.skipped} | {summary.failed} | {summary.elapsed_seconds:.2f} |\n"
+        )
 
 
 def _ensure_storage_paths(config: AppConfig) -> None:
@@ -80,25 +113,100 @@ def _render_status(snapshot: StatusSnapshot) -> None:
 
 
 def _collect_status_snapshot(config: AppConfig, playlist_url: str) -> StatusSnapshot:
-    """
-    Lookup the latest status information for the requested playlist.
+    sessions = fetch_playlist_sessions(config.storage.database, playlist_url)
+    return _snapshot_from_sessions(config, playlist_url, sessions)
 
-    The current implementation returns placeholder data that will be replaced once
-    persistence models are available.
-    """
 
+def _snapshot_from_sessions(
+    config: AppConfig, playlist_url: str, sessions: list[dict[str, Any]]
+) -> StatusSnapshot:
+    if not sessions:
+        return StatusSnapshot(
+            playlist_url=playlist_url,
+            total=0,
+            completed=0,
+            skipped=0,
+            failed=0,
+            pending=0,
+            throttle_label=
+            f"{config.throttle.max_concurrency} concurrent @ "
+            f"{config.throttle.limit_rate or 'unbounded'}",
+            elapsed_seconds=0.0,
+            eta_seconds=0.0,
+        )
+
+    latest = sessions[0]
+    throttle_label = latest.get("throttle_label") or (
+        f"{latest.get('throttle_max_concurrency') or config.throttle.max_concurrency} "
+        f"concurrent @ {latest.get('throttle_limit_rate') or config.throttle.limit_rate or 'unbounded'}"
+    )
     return StatusSnapshot(
         playlist_url=playlist_url,
-        total=0,
-        completed=0,
-        skipped=0,
-        failed=0,
-        pending=0,
-        throttle_label=f"{config.throttle.max_concurrency} concurrent @ "
-        f"{config.throttle.limit_rate or 'unbounded'}",
-        elapsed_seconds=0.0,
-        eta_seconds=0.0,
+        total=int(latest.get("total", 0)),
+        completed=int(latest.get("completed", 0)),
+        skipped=int(latest.get("skipped", 0)),
+        failed=int(latest.get("failed", 0)),
+        pending=int(latest.get("pending", 0)),
+        throttle_label=throttle_label,
+        elapsed_seconds=float(latest.get("elapsed_seconds", 0.0)),
+        eta_seconds=float(latest.get("eta_seconds", 0.0)),
     )
+
+
+def _build_download_contract_payload(
+    *,
+    session_id: str,
+    playlist_id: str,
+    summary: DownloadSummary,
+) -> dict[str, Any]:
+    return {
+        "sessionId": session_id,
+        "playlistId": playlist_id,
+        "enqueued": summary.total,
+    }
+
+
+def _build_status_contract_payload(
+    *,
+    playlist_id: str,
+    sessions: list[dict[str, Any]],
+    config: AppConfig,
+) -> dict[str, Any]:
+    if not sessions:
+        throttle_profile = {
+            "maxConcurrency": config.throttle.max_concurrency,
+            "limitRate": config.throttle.limit_rate,
+            "sleepIntervalSeconds": config.throttle.sleep_interval,
+        }
+        session_payloads: list[dict[str, Any]] = []
+    else:
+        session_payloads = []
+        for row in sessions:
+            session_payloads.append(
+                {
+                    "sessionId": row["session_id"],
+                    "status": row.get("status", "completed"),
+                    "videosTotal": row.get("total", 0),
+                    "videosCompleted": row.get("completed", 0),
+                    "videosSkipped": row.get("skipped", 0),
+                    "videosFailed": row.get("failed", 0),
+                    "throttleProfile": {
+                        "maxConcurrency": row.get("throttle_max_concurrency")
+                        or config.throttle.max_concurrency,
+                        "limitRate": row.get("throttle_limit_rate")
+                        or config.throttle.limit_rate,
+                        "sleepIntervalSeconds": row.get("throttle_sleep_interval")
+                        or config.throttle.sleep_interval,
+                    },
+                }
+            )
+        throttle_profile = session_payloads[0]["throttleProfile"]
+
+    return {
+        "playlistId": playlist_id,
+        "sessions": session_payloads,
+        "throttleProfile": throttle_profile,
+    }
 
 
 @app.callback()
@@ -141,6 +249,12 @@ def download(
         "--limit-rate",
         help="Network rate limit (e.g., 2M, 500K).",
     ),
+    output_format: Literal["text", "json"] = typer.Option(
+        "text",
+        "--format",
+        "-f",
+        help="Output format for command results.",
+    ),
 ) -> None:
     """
     Download an entire playlist using configured settings.
@@ -172,16 +286,33 @@ def download(
         limit_rate=limit_rate,
     )
     session_id = str(uuid4())
+    playlist_id = _derive_playlist_id(playlist_url)
 
     record_session_run(
         config.storage.database,
         session_id=session_id,
+        playlist_id=playlist_id,
         playlist_url=playlist_url,
         summary=summary,
     )
 
-    _render_download_summary(summary)
-    console.print(f"Session ID: {session_id}")
+    _append_quality_summary(
+        config,
+        session_id=session_id,
+        playlist_id=playlist_id,
+        summary=summary,
+    )
+
+    if output_format == "json":
+        payload = _build_download_contract_payload(
+            session_id=session_id,
+            playlist_id=playlist_id,
+            summary=summary,
+        )
+        typer.echo(json.dumps(payload))
+    else:
+        _render_download_summary(summary)
+        console.print(f"Session ID: {session_id}")
 
 
 @app.command()
@@ -192,14 +323,30 @@ def status(
         "--playlist-url",
         help="Playlist URL to query.",
     ),
+    output_format: Literal["text", "json"] = typer.Option(
+        "text",
+        "--format",
+        "-f",
+        help="Output format for command results.",
+    ),
 ) -> None:
     """
     Display stored download status for a playlist.
     """
 
     config: AppConfig = ctx.obj["config"]
-    snapshot = _collect_status_snapshot(config, playlist_url)
-    _render_status(snapshot)
+    playlist_id = _derive_playlist_id(playlist_url)
+    sessions = fetch_playlist_sessions(config.storage.database, playlist_url)
+    if output_format == "json":
+        payload = _build_status_contract_payload(
+            playlist_id=playlist_id,
+            sessions=sessions,
+            config=config,
+        )
+        typer.echo(json.dumps(payload))
+    else:
+        snapshot = _snapshot_from_sessions(config, playlist_url, sessions)
+        _render_status(snapshot)
 
 
 @app.command()

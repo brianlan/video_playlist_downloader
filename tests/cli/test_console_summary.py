@@ -15,9 +15,12 @@ def test_console_summary_contains_key_metrics(monkeypatch, cli_runner, app_confi
         skipped=2,
         failed=1,
         pending=1,
-        throttle_label="2 concurrent / 2M",
+        throttle_label="2 concurrent @ 2M",
         elapsed_seconds=120.5,
         eta_seconds=30.0,
+        applied_concurrency=2,
+        applied_limit_rate="2M",
+        sleep_interval=1.0,
     )
 
     monkeypatch.setattr(cli, "_load_configuration", lambda _: app_config)
@@ -40,6 +43,6 @@ def test_console_summary_contains_key_metrics(monkeypatch, cli_runner, app_confi
     assert "Completed: 6" in result.stdout
     assert "Skipped: 2" in result.stdout
     assert "Pending: 1" in result.stdout
-    assert "Throttle: 2 concurrent / 2M" in result.stdout
+    assert "Throttle: 2 concurrent @ 2M" in result.stdout
     assert "Elapsed: 120.5s" in result.stdout
     assert "ETA: 30.0s" in result.stdout

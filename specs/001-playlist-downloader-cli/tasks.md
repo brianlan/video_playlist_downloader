@@ -73,9 +73,9 @@ description: "Task list for Video Playlist CLI Downloader implementation"
 - [X] T017 [P] [US1] Implement playlist enumeration and download orchestration in `src/video_playlist_downloader/downloader.py`
 - [X] T018 [US1] Wire `download` command with configuration and downloader in `src/video_playlist_downloader/cli.py`
 - [X] T019 [US1] Persist session activity and skip reasons to database log in `src/video_playlist_downloader/persistence.py`
-- [ ] T020 [US1] Align CLI contract with OpenAPI expectations in `tests/contract/test_contract_alignment.py`
+- [X] T020 [US1] Align CLI contract with OpenAPI expectations in `tests/contract/test_contract_alignment.py`
 - [X] T021 [US1] Emit Rich progress and summary table covering totals, pending items, elapsed time, throttle status, and ETA in `src/video_playlist_downloader/cli.py`
-- [ ] T059 [US1] Instrument session summary timing and publish latency metrics in `src/video_playlist_downloader/cli.py` and `reports/quality-summary.md`
+- [X] T059 [US1] Instrument session summary timing and publish latency metrics in `src/video_playlist_downloader/cli.py` and `reports/quality-summary.md`
 - [X] T060 [US1] Integrate storage capacity guard into download flow with Rich warnings in `src/video_playlist_downloader/cli.py`
 
 **Checkpoint**: Playlist downloads execute end-to-end with skipped videos logged, progress visible, and contract validated.

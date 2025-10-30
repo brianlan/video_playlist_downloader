@@ -16,9 +16,12 @@ def test_download_command_initializes_persistence(monkeypatch, cli_runner, app_c
         skipped=0,
         failed=0,
         pending=0,
-        throttle_label="default",
+        throttle_label="2 concurrent @ unbounded",
         elapsed_seconds=5.0,
         eta_seconds=0.0,
+        applied_concurrency=app_config.throttle.max_concurrency,
+        applied_limit_rate=app_config.throttle.limit_rate,
+        sleep_interval=app_config.throttle.sleep_interval,
     )
 
     monkeypatch.setattr(cli, "_load_configuration", lambda _: app_config)
@@ -51,3 +54,5 @@ def test_download_command_initializes_persistence(monkeypatch, cli_runner, app_c
     assert app_config.storage.database.exists(), "State database should be created"
     assert app_config.storage.reports.exists(), "Reports directory should be created"
     assert "Download Summary" in result.stdout
+    assert "Session ID:" in result.stdout
+    assert (app_config.storage.reports / "quality-summary.md").exists()

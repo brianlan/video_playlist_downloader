@@ -15,9 +15,12 @@ def test_download_cli_invokes_downloader(monkeypatch, cli_runner, app_config):
         skipped=1,
         failed=0,
         pending=0,
-        throttle_label="2 concurrent @2M",
+        throttle_label="3 concurrent @ 2M",
         elapsed_seconds=12.0,
         eta_seconds=0.0,
+        applied_concurrency=3,
+        applied_limit_rate="2M",
+        sleep_interval=1.0,
     )
 
     monkeypatch.setattr(cli, "_load_configuration", lambda _: app_config)
@@ -63,3 +66,6 @@ def test_download_cli_invokes_downloader(monkeypatch, cli_runner, app_config):
     assert "Download Summary" in result.stdout
     assert "Completed" in result.stdout
     assert "Skipped" in result.stdout
+    assert "Session ID:" in result.stdout
+    quality_path = app_config.storage.reports / "quality-summary.md"
+    assert quality_path.exists()
