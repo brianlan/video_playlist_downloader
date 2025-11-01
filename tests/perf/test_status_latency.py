@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import time
-from types import SimpleNamespace
-
 import pytest
 
 from video_playlist_downloader import cli

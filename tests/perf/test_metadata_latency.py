@@ -4,9 +4,11 @@ import time
 
 import pytest
 
-sqlalchemy = pytest.importorskip("sqlalchemy")
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+try:
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+except ModuleNotFoundError:  # pragma: no cover - optional dependency
+    pytest.skip("SQLAlchemy is required for performance metadata tests.", allow_module_level=True)
 
 from video_playlist_downloader import metadata
 

@@ -1,3 +1,5 @@
+SHELL := /bin/bash
+
 CONDA_ENV := /ssd4/envs/llm_py310_torch271_cu128
 ACTIVATE := source $$(conda info --base)/etc/profile.d/conda.sh && conda activate $(CONDA_ENV)
 

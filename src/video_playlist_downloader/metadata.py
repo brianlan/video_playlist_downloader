@@ -5,7 +5,7 @@ Metadata models and repository helpers for the Video Playlist Downloader.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, Optional, Sequence
+from typing import Any, Dict, Optional, Sequence
 
 try:  # pragma: no cover - import guard for environments without SQLAlchemy
     from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func, select

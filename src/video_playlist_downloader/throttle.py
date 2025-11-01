@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import threading
 import time
 from typing import Callable, Optional
@@ -136,19 +136,15 @@ class ThrottleController:
 
     def _prepare_wait(self) -> float:
         wait_time = 0.0
-        sleep_due_to_backoff = 0.0
-        sleep_due_to_interval = 0.0
         now_value = self._now()
         with self._lock:
             if self._current_backoff > 0.0:
-                sleep_due_to_backoff = self._current_backoff
                 wait_time += self._current_backoff
                 self._metrics.total_backoff_seconds += self._current_backoff
             if self._last_release is not None and self.profile.sleep_interval > 0.0:
                 elapsed = max(0.0, now_value - self._last_release)
                 remaining = self.profile.sleep_interval - elapsed
                 if remaining > 0.0:
-                    sleep_due_to_interval = remaining
                     wait_time += remaining
                     self._metrics.total_sleep_seconds += remaining
 

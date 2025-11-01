@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import pytest
-
 from video_playlist_downloader import subtitles
 
 
