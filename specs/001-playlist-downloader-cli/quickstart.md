@@ -24,7 +24,7 @@ mkdir -p "$VPD_STORAGE_ROOT"
 ## 4. Run the CLI against a playlist
 ```bash
 video-playlist-downloader download \
-  --playlist-url https://space.bilibili.com/28554995/upload/video \
+  https://space.bilibili.com/28554995/upload/video \
   --max-concurrency 2 \
   --limit-rate 2M
 ```
