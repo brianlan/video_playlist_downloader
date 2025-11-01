@@ -40,6 +40,10 @@ class ThrottleSettings:
     sleep_interval: float = 1.0
     max_retries: int = 3
     retry_backoff: float = 1.5
+    ban_backoff_initial: float = 1.0
+    ban_backoff_factor: float = 2.0
+    ban_backoff_max: float = 60.0
+    compliance_threshold: float = 0.95
 
 
 @dataclass(frozen=True)
@@ -79,12 +83,26 @@ def load_config(dotenv_path: Optional[Path] = None) -> AppConfig:
     database_path = storage_root / os.getenv("VPD_DATABASE_FILENAME", DEFAULT_DATABASE_FILENAME)
     reports_dir = _ensure_absolute(Path(os.getenv("VPD_REPORTS_DIR", DEFAULT_REPORTS_DIR)))
 
+    max_concurrency_value = max(1, int(os.getenv("VPD_MAX_CONCURRENCY", "2")))
+    sleep_interval_value = max(0.0, float(os.getenv("VPD_SLEEP_INTERVAL", "1.0")))
+    ban_backoff_initial = max(0.0, float(os.getenv("VPD_BAN_BACKOFF_INITIAL", "1.0")))
+    ban_backoff_factor = max(1.0, float(os.getenv("VPD_BAN_BACKOFF_FACTOR", "2.0")))
+    ban_backoff_max = max(ban_backoff_initial, float(os.getenv("VPD_BAN_BACKOFF_MAX", "60.0")))
+    compliance_threshold = min(
+        1.0,
+        max(0.0, float(os.getenv("VPD_COMPLIANCE_THRESHOLD", "0.95"))),
+    )
+
     throttle = ThrottleSettings(
-        max_concurrency=int(os.getenv("VPD_MAX_CONCURRENCY", "2")),
+        max_concurrency=max_concurrency_value,
         limit_rate=os.getenv("VPD_LIMIT_RATE"),
-        sleep_interval=float(os.getenv("VPD_SLEEP_INTERVAL", "1.0")),
+        sleep_interval=sleep_interval_value,
         max_retries=int(os.getenv("VPD_MAX_RETRIES", "3")),
         retry_backoff=float(os.getenv("VPD_RETRY_BACKOFF", "1.5")),
+        ban_backoff_initial=ban_backoff_initial,
+        ban_backoff_factor=ban_backoff_factor,
+        ban_backoff_max=ban_backoff_max,
+        compliance_threshold=compliance_threshold,
     )
 
     subtitle_languages = _comma_separated_list(os.getenv("VPD_SUBTITLE_LANGUAGES"))

@@ -6,7 +6,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
+import logging
 from pathlib import Path
+import re
 from typing import Any, Dict, Literal, Optional
 from uuid import NAMESPACE_URL, uuid4, uuid5
 
@@ -30,8 +32,16 @@ from .storage_guard import InsufficientStorageError, StorageGuard
 app = typer.Typer(help="Download and manage playlist archives from Bilibili.")
 console = Console()
 err_console = Console(stderr=True)
+logger = logging.getLogger("video_playlist_downloader.cli")
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    handler.setLevel(logging.INFO)
+    handler.setFormatter(logging.Formatter("%(levelname)s %(message)s"))
+    logger.addHandler(handler)
+logger.propagate = False
 
 OUTPUT_FORMATS = ("text", "json")
+_REDACTION_PATTERN = re.compile(r"(token|key|secret|session_id)=([^&\s]+)", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -57,6 +67,12 @@ def _derive_playlist_id(playlist_url: str) -> str:
     return str(uuid5(NAMESPACE_URL, playlist_url))
 
 
+def _redact_sensitive(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+    return _REDACTION_PATTERN.sub(lambda m: f"{m.group(1)}=***", value)
+
+
 def _append_quality_summary(
     config: AppConfig,
     *,
@@ -75,6 +91,32 @@ def _append_quality_summary(
         handle.write(
             f"| {session_id} | {playlist_id} | {summary.total} | {summary.completed} | "
             f"{summary.skipped} | {summary.failed} | {summary.elapsed_seconds:.2f} |\n"
+        )
+
+
+def _append_throttle_metrics_report(
+    config: AppConfig,
+    *,
+    session_id: str,
+    playlist_id: str,
+    summary: DownloadSummary,
+) -> None:
+    """Append throttle metrics for the run to the report file."""
+
+    metrics = summary.throttle_metrics
+    report_path = config.storage.reports / "throttle-metrics.md"
+    if not report_path.exists():
+        report_path.write_text(
+            "# Throttle Metrics\n\n"
+            "| Session ID | Playlist ID | Compliance | Ban events | Sleep (s) | Backoff (s) |\n"
+            "|------------|-------------|------------|------------|-----------|-------------|\n",
+            encoding="utf-8",
+        )
+    with report_path.open("a", encoding="utf-8") as handle:
+        handle.write(
+            f"| {session_id} | {playlist_id} | {metrics.compliance_ratio * 100:.2f}% | "
+            f"{metrics.ban_events} | {metrics.total_sleep_seconds:.2f} | "
+            f"{metrics.total_backoff_seconds:.2f} |\n"
         )
 
 
@@ -124,11 +166,15 @@ def _render_download_summary(summary: DownloadSummary) -> None:
     console.print(f"Throttle: {summary.throttle_label}")
     console.print(f"Elapsed: {summary.elapsed_seconds:.1f}s")
     console.print(f"ETA: {summary.eta_seconds:.1f}s")
+    metrics = summary.throttle_metrics
+    console.print(f"Throttle compliance: {metrics.compliance_ratio * 100:.2f}%")
+    console.print(f"Ban events: {metrics.ban_events}")
 
 
 def _render_status(snapshot: StatusSnapshot) -> None:
     console.print("[bold cyan]Playlist Status[/bold cyan]")
-    console.print(f"Playlist: {snapshot.playlist_url}")
+    safe_url = _redact_sensitive(snapshot.playlist_url) or snapshot.playlist_url
+    console.print(f"Playlist: {safe_url}")
     console.print(f"Total Videos: {snapshot.total}")
     console.print(f"Completed: {snapshot.completed}")
     console.print(f"Skipped: {snapshot.skipped}")
@@ -190,6 +236,7 @@ def _build_download_contract_payload(
         "sessionId": session_id,
         "playlistId": playlist_id,
         "enqueued": summary.total,
+        "throttle": summary.throttle_metrics.to_dict(),
     }
 
 
@@ -355,6 +402,12 @@ def download(
         playlist_id=playlist_id,
         summary=summary,
     )
+    _append_throttle_metrics_report(
+        config,
+        session_id=session_id,
+        playlist_id=playlist_id,
+        summary=summary,
+    )
 
     coverage = _persist_metadata_from_summary(
         config,
@@ -367,6 +420,28 @@ def download(
         console.print(
             f"Subtitle Coverage: {coverage['coveragePercent']}% "
             f"({coverage['videosWithSubtitles']}/{coverage['totalVideos']})"
+        )
+
+    compliance_ratio = summary.throttle_metrics.compliance_ratio
+    logger.info(
+        "Session %s throttle compliance %.2f%% (ban events=%s)",
+        session_id,
+        compliance_ratio * 100,
+        summary.throttle_metrics.ban_events,
+    )
+    if compliance_ratio < config.throttle.compliance_threshold:
+        err_console.print(
+            typer.style(
+                f"Throttle compliance {compliance_ratio * 100:.2f}% "
+                f"is below threshold ({config.throttle.compliance_threshold * 100:.2f}%).",
+                fg=typer.colors.RED,
+            )
+        )
+        logger.warning(
+            "Compliance below threshold for session %s (%.2f%% < %.2f%%)",
+            session_id,
+            compliance_ratio * 100,
+            config.throttle.compliance_threshold * 100,
         )
 
     if output_format == "json":

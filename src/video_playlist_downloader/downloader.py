@@ -9,6 +9,7 @@ import time
 from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 from .config import AppConfig
+from .throttle import ThrottleController, ThrottleMetrics, ThrottleProfile
 
 if TYPE_CHECKING:  # pragma: no cover - only for type checking
     from .persistence import ResumeCheckpoint
@@ -39,6 +40,7 @@ class DownloadSummary:
     sleep_interval: float
     skipped_items: Tuple[SkipRecord, ...] = field(default_factory=tuple)
     manifest: Optional[Dict[str, Any]] = None
+    throttle_metrics: ThrottleMetrics = field(default_factory=ThrottleMetrics)
 
 
 class PlaylistDownloader:
@@ -70,15 +72,40 @@ class PlaylistDownloader:
 
         return []
 
-    def _download_videos(self, video_ids: Iterable[str]) -> List[str]:
+    def _download_videos(
+        self,
+        video_ids: Iterable[str],
+        throttle: ThrottleController,
+    ) -> List[str]:
         """
-        Execute downloads for the provided video identifiers.
-
-        The placeholder implementation simply records the IDs that would have been
-        downloaded and returns the successful ones.
+        Execute downloads for the provided video identifiers while passing through
+        the throttle controller to collect metrics.
         """
 
-        return list(video_ids)
+        completed: List[str] = []
+        for video_id in video_ids:
+            with throttle.guard() as ticket:
+                success = self._perform_download(video_id)
+                if success:
+                    completed.append(video_id)
+                    ticket.mark_success()
+                else:
+                    ticket.mark_failure()
+        return completed
+
+    def _perform_download(self, video_id: str) -> bool:
+        """
+        Perform the actual download. The placeholder implementation simply reports
+        success and uses the yt-dlp client when provided.
+        """
+
+        if self._yt_dlp_client is None:
+            return True
+        try:
+            self._yt_dlp_client.download([video_id])
+        except Exception:  # pragma: no cover - simulated failures handled by tests
+            return False
+        return True
 
     def run(
         self,
@@ -90,14 +117,24 @@ class PlaylistDownloader:
         Execute the download process and return a summary of results.
         """
 
-        start = time.perf_counter()
-        videos = list(self.enumerate_videos())
-        completed_videos = self._download_videos(videos)
-        elapsed = time.perf_counter() - start
-
         applied_concurrency = max_concurrency or self.config.throttle.max_concurrency
         applied_limit_rate = limit_rate or self.config.throttle.limit_rate
         throttle_label = f"{applied_concurrency} concurrent @ {applied_limit_rate or 'unbounded'}"
+
+        profile = ThrottleProfile(
+            max_concurrency=applied_concurrency,
+            limit_rate=applied_limit_rate,
+            sleep_interval=self.config.throttle.sleep_interval,
+            ban_backoff_initial=self.config.throttle.ban_backoff_initial,
+            ban_backoff_factor=self.config.throttle.ban_backoff_factor,
+            ban_backoff_max=self.config.throttle.ban_backoff_max,
+        )
+        throttle = ThrottleController(profile)
+
+        start = time.perf_counter()
+        videos = list(self.enumerate_videos())
+        completed_videos = self._download_videos(videos, throttle)
+        elapsed = time.perf_counter() - start
 
         skipped = 0
         failed = len(videos) - len(completed_videos)
@@ -116,6 +153,7 @@ class PlaylistDownloader:
             applied_limit_rate=applied_limit_rate,
             sleep_interval=self.config.throttle.sleep_interval,
             manifest={"playlistUrl": self.playlist_url, "title": self.playlist_url, "videos": list(videos)},
+            throttle_metrics=throttle.metrics,
         )
 
 
@@ -142,8 +180,18 @@ class PlaylistDownloader:
             completed_set = set(completed)
             pending_videos = [vid for vid in manifest_videos if vid not in completed_set]
 
+        profile = ThrottleProfile(
+            max_concurrency=applied_concurrency,
+            limit_rate=applied_limit_rate,
+            sleep_interval=sleep_interval,
+            ban_backoff_initial=self.config.throttle.ban_backoff_initial,
+            ban_backoff_factor=self.config.throttle.ban_backoff_factor,
+            ban_backoff_max=self.config.throttle.ban_backoff_max,
+        )
+        throttle = ThrottleController(profile)
+
         start = time.perf_counter()
-        newly_completed = self._download_videos(pending_videos)
+        newly_completed = self._download_videos(pending_videos, throttle)
         elapsed = time.perf_counter() - start
 
         completed.extend(newly_completed)
@@ -167,6 +215,7 @@ class PlaylistDownloader:
             applied_limit_rate=applied_limit_rate,
             sleep_interval=sleep_interval,
             manifest=checkpoint.manifest,
+            throttle_metrics=throttle.metrics,
         )
 
 

@@ -69,7 +69,6 @@ description: "Task list for Video Playlist CLI Downloader implementation"
 
 ### Implementation for User Story 1
 
-- [ ] T017 [P] [US1] Implement playlist enumeration and download orchestration in `src/video_playlist_downloader/downloader.py`
 - [X] T017 [P] [US1] Implement playlist enumeration and download orchestration in `src/video_playlist_downloader/downloader.py`
 - [X] T018 [US1] Wire `download` command with configuration and downloader in `src/video_playlist_downloader/cli.py`
 - [X] T019 [US1] Persist session activity and skip reasons to database log in `src/video_playlist_downloader/persistence.py`
@@ -149,20 +148,20 @@ description: "Task list for Video Playlist CLI Downloader implementation"
 
 > **MANDATE: Write these tests FIRST, ensure they FAIL before implementation, and document the command that executes them.**
 
-- [ ] T038 [P] [US4] Author throttle policy test covering semaphore and delay logic in `tests/rate_limit/test_throttle_controls.py`
-- [ ] T039 [P] [US4] Author CLI configuration test for throttle flags in `tests/unit/test_throttle_cli.py`
-- [ ] T040 [P] [US4] Author throttle metrics analysis test ensuring ≥95% compliant runs in `tests/rate_limit/test_throttle_metrics.py`
-- [ ] T054 [P] [US4] Author ban-avoidance simulation test injecting provider 429/ban responses in `tests/rate_limit/test_ban_resilience.py`
+- [X] T038 [P] [US4] Author throttle policy test covering semaphore and delay logic in `tests/rate_limit/test_throttle_controls.py`
+- [X] T039 [P] [US4] Author CLI configuration test for throttle flags in `tests/unit/test_throttle_cli.py`
+- [X] T040 [P] [US4] Author throttle metrics analysis test ensuring ≥95% compliant runs in `tests/rate_limit/test_throttle_metrics.py`
+- [X] T054 [P] [US4] Author ban-avoidance simulation test injecting provider 429/ban responses in `tests/rate_limit/test_ban_resilience.py`
 
 ### Implementation for User Story 4
 
-- [ ] T041 [US4] Implement throttle policy manager with concurrency semaphore in `src/video_playlist_downloader/throttle.py`
-- [ ] T042 [US4] Integrate throttle controls into downloader execution loop in `src/video_playlist_downloader/downloader.py`
-- [ ] T043 [US4] Extend configuration schema with throttle settings and validation in `src/video_playlist_downloader/config.py`
-- [ ] T044 [US4] Log throttle outcomes, ban-resilience metrics, and display them in the Rich session reporting table in `src/video_playlist_downloader/cli.py`
-- [ ] T045 [US4] Persist throttle compliance summary to `reports/throttle-metrics.md` and raise alerts on failures
-- [ ] T055 [US4] React to simulated ban signals with exponential backoff and recovery in `src/video_playlist_downloader/throttle.py`
-- [ ] T056 [US4] Capture ban-resilience metrics in reporting artifacts (`reports/throttle-metrics.md`) and CLI summaries
+- [X] T041 [US4] Implement throttle policy manager with concurrency semaphore in `src/video_playlist_downloader/throttle.py`
+- [X] T042 [US4] Integrate throttle controls into downloader execution loop in `src/video_playlist_downloader/downloader.py`
+- [X] T043 [US4] Extend configuration schema with throttle settings and validation in `src/video_playlist_downloader/config.py`
+- [X] T044 [US4] Log throttle outcomes, ban-resilience metrics, and display them in the Rich session reporting table in `src/video_playlist_downloader/cli.py`
+- [X] T045 [US4] Persist throttle compliance summary to `reports/throttle-metrics.md` and raise alerts on failures
+- [X] T055 [US4] React to simulated ban signals with exponential backoff and recovery in `src/video_playlist_downloader/throttle.py`
+- [X] T056 [US4] Capture ban-resilience metrics in reporting artifacts (`reports/throttle-metrics.md`) and CLI summaries
 
 **Checkpoint**: Download rate adheres to configured ceilings with clear operator feedback and compliance tracking.
 
@@ -172,11 +171,11 @@ description: "Task list for Video Playlist CLI Downloader implementation"
 
 **Purpose**: Repository hygiene, documentation, and release readiness
 
-- [ ] T046 [P] Capture throttling and persistence decisions in `docs/decisions/2025-10-29-download-architecture.md`
-- [ ] T047 Refresh quickstart with resume and throttle examples in `specs/001-playlist-downloader-cli/quickstart.md`
-- [ ] T048 [P] Export quality gate results to `reports/quality-summary.md` after `make quality`
-- [ ] T049 Harden logging configuration and redact sensitive data in `src/video_playlist_downloader/cli.py`
-- [ ] T050 [P] Final review and update of OpenAPI alignment notes in `contracts/openapi.yaml`
+- [X] T046 [P] Capture throttling and persistence decisions in `docs/decisions/2025-10-29-download-architecture.md`
+- [X] T047 Refresh quickstart with resume and throttle examples in `specs/001-playlist-downloader-cli/quickstart.md`
+- [X] T048 [P] Export quality gate results to `reports/quality-summary.md` after `make quality`
+- [X] T049 Harden logging configuration and redact sensitive data in `src/video_playlist_downloader/cli.py`
+- [X] T050 [P] Final review and update of OpenAPI alignment notes in `contracts/openapi.yaml`
 
 ---
 

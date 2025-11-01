@@ -46,11 +46,25 @@ def test_download_contract_payload(monkeypatch, cli_runner, app_config):
     assert result.exit_code == 0
     payload = json.loads(result.stdout.strip())
 
-    assert set(payload.keys()) == {"sessionId", "playlistId", "enqueued"}
+    assert set(payload.keys()) == {"sessionId", "playlistId", "enqueued", "throttle"}
     UUID(payload["sessionId"])
     expected_playlist_id = str(uuid5(NAMESPACE_URL, playlist_url))
     assert payload["playlistId"] == expected_playlist_id
     assert payload["enqueued"] == summary.total
+    throttle_payload = payload["throttle"]
+    expected_throttle_keys = {
+        "totalRequests",
+        "compliantRequests",
+        "throttledRequests",
+        "banEvents",
+        "totalSleepSeconds",
+        "totalBackoffSeconds",
+        "complianceRatio",
+    }
+    assert expected_throttle_keys.issubset(throttle_payload.keys())
+    assert throttle_payload["complianceRatio"] == pytest.approx(
+        summary.throttle_metrics.compliance_ratio
+    )
 
 
 @pytest.mark.usefixtures("storage_root")

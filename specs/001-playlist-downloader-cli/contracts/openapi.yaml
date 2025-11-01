@@ -53,6 +53,7 @@ paths:
                 required:
                   - sessionId
                   - playlistId
+                  - throttle
                 properties:
                   sessionId:
                     type: string
@@ -62,6 +63,31 @@ paths:
                     format: uuid
                   enqueued:
                     type: integer
+                  throttle:
+                    type: object
+                    required:
+                      - totalRequests
+                      - compliantRequests
+                      - throttledRequests
+                      - banEvents
+                      - totalSleepSeconds
+                      - totalBackoffSeconds
+                      - complianceRatio
+                    properties:
+                      totalRequests:
+                        type: integer
+                      compliantRequests:
+                        type: integer
+                      throttledRequests:
+                        type: integer
+                      banEvents:
+                        type: integer
+                      totalSleepSeconds:
+                        type: number
+                      totalBackoffSeconds:
+                        type: number
+                      complianceRatio:
+                        type: number
   /playlists/{playlistId}/status:
     get:
       tags: [Playlists]
