@@ -67,6 +67,8 @@ class PlaylistDownloader:
         self.playlist_url = playlist_url
         self._yt_dlp_client = yt_dlp_client
         self._manifest_cache: Optional[Dict[str, Any]] = None
+        # Ensure download directory exists so yt-dlp has a target.
+        config.storage.downloads.mkdir(parents=True, exist_ok=True)
 
     def enumerate_videos(self) -> Sequence[Dict[str, Any]]:
         """
@@ -90,8 +92,8 @@ class PlaylistDownloader:
         options = {
             "quiet": True,
             "ignoreerrors": True,
-            "skip_download": True,
             "no_warnings": True,
+            "paths": {"home": str(self.config.storage.downloads)},
         }
         self._yt_dlp_client = YoutubeDL(options)
         return self._yt_dlp_client
