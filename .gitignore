@@ -29,9 +29,13 @@ build/
 coverage/
 .DS_Store
 Thumbs.db
+*.tmp
+*.swp
 .env
 .env.*
 
 # IDE/editor
 .vscode/
 .idea/
+
+reports/
