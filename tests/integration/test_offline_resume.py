@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 
 import pytest
 
@@ -54,6 +55,8 @@ def test_resume_uses_checkpoint_without_network(monkeypatch, cli_runner, app_con
         applied_concurrency=2,
         applied_limit_rate="2M",
         sleep_interval=1.0,
+        completed_videos=("https://example.com/video-a", "https://example.com/video-c"),
+        pending_videos=(),
     )
 
     monkeypatch.setattr(cli, "_load_configuration", lambda _: app_config)
@@ -81,3 +84,16 @@ def test_resume_uses_checkpoint_without_network(monkeypatch, cli_runner, app_con
     payload = json.loads(result.stdout.strip())
     assert payload["videosCompleted"] == summary.completed
     assert payload["videosSkipped"] == summary.skipped
+
+    connection = sqlite3.connect(database_path)
+    connection.row_factory = sqlite3.Row
+    try:
+        checkpoint_row = connection.execute(
+            "SELECT session_id, resumed_from, completed_videos FROM resume_checkpoints WHERE session_id = ?",
+            (payload["sessionId"],),
+        ).fetchone()
+        assert checkpoint_row is not None
+        assert checkpoint_row["resumed_from"] == checkpoint.session_id
+        assert json.loads(checkpoint_row["completed_videos"]) == list(summary.completed_videos)
+    finally:
+        connection.close()

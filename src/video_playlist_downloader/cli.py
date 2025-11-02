@@ -26,6 +26,7 @@ from .persistence import (
     load_resume_checkpoint,
     record_session_run,
     save_playlist_manifest,
+    save_resume_checkpoint,
 )
 from .storage_guard import InsufficientStorageError, StorageGuard
 
@@ -123,6 +124,36 @@ def _append_throttle_metrics_report(
 def _write_subtitle_report(config: AppConfig, coverage: Dict[str, Any]) -> None:
     report_path = config.storage.reports / "subtitle-metrics.json"
     report_path.write_text(json.dumps(coverage, indent=2), encoding="utf-8")
+
+
+def _build_throttle_profile(summary: DownloadSummary) -> Dict[str, Any]:
+    return {
+        "maxConcurrency": summary.applied_concurrency,
+        "limitRate": summary.applied_limit_rate,
+        "sleepIntervalSeconds": summary.sleep_interval,
+    }
+
+
+def _persist_resume_checkpoint(
+    config: AppConfig,
+    *,
+    session_id: str,
+    playlist_id: str,
+    playlist_url: str,
+    summary: DownloadSummary,
+    resumed_from: Optional[str] = None,
+) -> None:
+    checkpoint = ResumeCheckpoint(
+        session_id=session_id,
+        playlist_id=playlist_id,
+        playlist_url=playlist_url,
+        completed_videos=tuple(summary.completed_videos),
+        pending_videos=tuple(summary.pending_videos),
+        throttle_profile=_build_throttle_profile(summary),
+        resumed_from=resumed_from,
+        manifest=summary.manifest,
+    )
+    save_resume_checkpoint(config.storage.database, checkpoint)
 
 
 def _persist_metadata_from_summary(
@@ -454,6 +485,13 @@ def download(
     else:
         _render_download_summary(summary)
         console.print(f"Session ID: {session_id}")
+    _persist_resume_checkpoint(
+        config,
+        session_id=session_id,
+        playlist_id=playlist_id,
+        playlist_url=playlist_url,
+        summary=summary,
+    )
 
 
 @app.command()
@@ -575,6 +613,14 @@ def resume(
         console.print(
             f"Session ID: {new_session_id} (resumed from {session_id})"
         )
+    _persist_resume_checkpoint(
+        config,
+        session_id=new_session_id,
+        playlist_id=checkpoint.playlist_id,
+        playlist_url=checkpoint.playlist_url,
+        summary=summary,
+        resumed_from=session_id,
+    )
 
 
 @app.command()

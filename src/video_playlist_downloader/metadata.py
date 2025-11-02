@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Sequence
+from datetime import datetime, timezone
 
 try:  # pragma: no cover - import guard for environments without SQLAlchemy
     from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func, select
@@ -165,6 +166,7 @@ if SQLALCHEMY_AVAILABLE:
             bvid: Optional[str],
             description: Optional[str],
         ) -> VideoRecord:
+            normalized_publish_time = _coerce_publish_time(publish_time)
             stmt = select(VideoRecord).where(
                 VideoRecord.playlist_id == playlist.id,
                 VideoRecord.video_url == video_url,
@@ -179,7 +181,7 @@ if SQLALCHEMY_AVAILABLE:
 
             record.title = title
             record.duration_seconds = duration_seconds
-            record.publish_time = publish_time
+            record.publish_time = normalized_publish_time
             record.bvid = bvid
             record.description = description
             record.download_status = "completed"
@@ -271,7 +273,7 @@ if SQLALCHEMY_AVAILABLE:
                     video_url=video_url,
                     title=title,
                     duration_seconds=duration,
-                    publish_time=publish_time,
+                    publish_time=_coerce_publish_time(publish_time),
                     bvid=bvid,
                     description=description,
                 )
@@ -288,6 +290,18 @@ else:  # pragma: no cover - used in environments lacking SQLAlchemy
     class MetadataRepository:  # type: ignore[misc]
         def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: D401
             raise _IMPORT_ERROR
+
+
+__all__ = [
+    "Base",
+    "Playlist",
+    "VideoRecord",
+    "SubtitleAsset",
+    "create_metadata_schema",
+    "MetadataRepository",
+    "VideoMetadataInput",
+    "generate_subtitle_coverage_report",
+]
 
 
 def generate_subtitle_coverage_report(
@@ -307,13 +321,37 @@ def generate_subtitle_coverage_report(
     }
 
 
-__all__ = [
-    "Base",
-    "Playlist",
-    "VideoRecord",
-    "SubtitleAsset",
-    "create_metadata_schema",
-    "MetadataRepository",
-    "VideoMetadataInput",
-    "generate_subtitle_coverage_report",
-]
+def _coerce_publish_time(value: Optional[Any]) -> Optional[datetime]:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+    if isinstance(value, (int, float)):
+        try:
+            return datetime.fromtimestamp(value, tz=timezone.utc)
+        except (OSError, OverflowError, ValueError):
+            return None
+    if isinstance(value, str):
+        cleaned = value.strip()
+        if not cleaned:
+            return None
+        if cleaned.isdigit() and len(cleaned) == 8:
+            try:
+                dt = datetime.strptime(cleaned, "%Y%m%d")
+            except ValueError:
+                return None
+            return dt.replace(tzinfo=timezone.utc)
+        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+            try:
+                dt = datetime.strptime(cleaned, fmt)
+                return dt.replace(tzinfo=timezone.utc)
+            except ValueError:
+                continue
+        try:
+            dt = datetime.fromisoformat(cleaned)
+        except ValueError:
+            return None
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+    return None

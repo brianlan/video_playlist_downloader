@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+import json
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 import pytest
@@ -28,7 +29,19 @@ def test_download_logs_session_activity_and_skips(monkeypatch, cli_runner, app_c
         applied_concurrency=2,
         applied_limit_rate="2M",
         sleep_interval=1.0,
-        manifest={"playlistUrl": playlist_url, "videos": ["https://example.com/video1"]},
+        manifest={
+            "playlistUrl": playlist_url,
+            "videos": [
+                {"url": "https://example.com/video1"},
+                {"url": "https://example.com/video2"},
+                {"url": "https://example.com/video3"},
+            ],
+        },
+        completed_videos=(
+            "https://example.com/video1",
+            "https://example.com/video2",
+            "https://example.com/video3",
+        ),
     )
 
     monkeypatch.setattr(cli, "_load_configuration", lambda _: app_config)
@@ -46,8 +59,11 @@ def test_download_logs_session_activity_and_skips(monkeypatch, cli_runner, app_c
     result = cli_runner.invoke(cli.app, ["download", playlist_url])
 
     assert result.exit_code == 0
+    session_line = next(line for line in result.stdout.splitlines() if line.startswith("Session ID:"))
+    reported_session_id = session_line.split(":", 1)[1].strip()
 
     connection = sqlite3.connect(app_config.storage.database)
+    connection.row_factory = sqlite3.Row
     try:
         activity_rows = connection.execute(
             "SELECT session_id, playlist_id, playlist_url, status, total, completed, skipped, failed, pending, "
@@ -69,6 +85,7 @@ def test_download_logs_session_activity_and_skips(monkeypatch, cli_runner, app_c
             throttle_limit_rate,
         ) = activity_rows[0]
         UUID(session_id)
+        assert session_id == reported_session_id
         assert row_playlist_url == playlist_url
         assert playlist_id == str(uuid5(NAMESPACE_URL, playlist_url))
         assert status == "completed"
@@ -85,6 +102,21 @@ def test_download_logs_session_activity_and_skips(monkeypatch, cli_runner, app_c
         assert skip_session_id == session_id
         assert video_url == "https://example.com/video1"
         assert reason == "geo-block"
+
+        checkpoint_rows = connection.execute(
+            "SELECT session_id, completed_videos, pending_videos, manifest, resumed_from, throttle_profile "
+            "FROM resume_checkpoints"
+        ).fetchall()
+        assert len(checkpoint_rows) == 1
+        checkpoint_row = checkpoint_rows[0]
+        assert checkpoint_row["session_id"] == session_id
+        assert checkpoint_row["resumed_from"] is None
+        assert json.loads(checkpoint_row["completed_videos"]) == list(summary.completed_videos)
+        assert json.loads(checkpoint_row["pending_videos"]) == list(summary.pending_videos)
+        persisted_manifest = json.loads(checkpoint_row["manifest"])
+        assert persisted_manifest["playlistUrl"] == playlist_url
+        throttle_profile = json.loads(checkpoint_row["throttle_profile"])
+        assert throttle_profile["maxConcurrency"] == summary.applied_concurrency
     finally:
         connection.close()
 
